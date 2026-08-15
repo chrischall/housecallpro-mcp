@@ -71,6 +71,16 @@ export class HousecallProClient {
     return token;
   }
 
+  /**
+   * Whether a configured link addresses an invoice rather than an estimate.
+   *
+   * Shape-based, so it works for a bare token whose URL never said which kind
+   * it was. Resolving a short link can hit the network, so this is async.
+   */
+  async isInvoiceLink(selector?: string): Promise<boolean> {
+    return tokenShape(await this.tokenFor(selector)) === 'invoice';
+  }
+
   /** Full estimate document behind a customer link. */
   async getEstimate(selector?: string): Promise<EstimateResponse> {
     const token = await this.tokenFor(selector);
@@ -131,6 +141,10 @@ export class HousecallProClient {
       throw new McpToolError('Pass at least one estimate option uuid to decline.');
     }
     const token = await this.tokenFor(selector);
+    // Without this, an invoice token gets posted to the estimate decline
+    // endpoint and the resulting 401 is reported as "your link expired",
+    // sending the user after the wrong problem.
+    this.assertShape(token, 'estimate', selector);
 
     const body = new URLSearchParams();
     for (const uuid of optionUuids) body.append('estimate_option_uuids[]', uuid);
@@ -228,7 +242,7 @@ export class HousecallProClient {
     if (res.status === 404) {
       throw new McpToolError(
         'Housecall Pro says this document no longer exists (HTTP 404). A pro can delete ' +
-          'or re-issue an estimate, which invalidates the old link.',
+          'or re-issue a document, which invalidates the old link.',
       );
     }
 

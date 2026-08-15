@@ -191,6 +191,7 @@ export interface InvoiceSummary {
   subtotal_cents?: number;
   total_cents?: number;
   due_cents?: number;
+  /** Derived: the document states no tax, so it is `total - subtotal`. */
   tax_cents?: number;
   /** Derived dollars. */
   subtotal_usd?: number;

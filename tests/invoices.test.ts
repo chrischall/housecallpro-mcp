@@ -4,6 +4,7 @@ import { HousecallProClient, type InvoiceResponse } from '../src/client.js';
 import { LinkRegistry, parseLink, tokenShape } from '../src/links.js';
 import { summarizeInvoice } from '../src/normalize.js';
 import { registerEstimateTools } from '../src/tools/estimates.js';
+import { registerHealthcheckTools } from '../src/tools/healthcheck.js';
 
 const ESTIMATE_TOKEN = `${'a'.repeat(64)}_${'b'.repeat(64)}`;
 const INVOICE_TOKEN = 'e'.repeat(32);
@@ -215,5 +216,116 @@ describe('housecallpro_get_invoice', () => {
     );
     expect(out['object']).toBe('consumer_invoice');
     expect(out['amount']).toBe(37888);
+  });
+});
+
+// --- Regressions found by auto-review on PR #7 ---
+
+describe('healthcheck with an invoice-only configuration', () => {
+  it('reports ok, not error, and actually reaches the network', async () => {
+    const fetchImpl = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(fixture()), {
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    const client = new HousecallProClient(new LinkRegistry({ HOUSECALLPRO_LINK: INVOICE_TOKEN }), {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const h = await createTestHarness((server) => registerHealthcheckTools(server, client));
+
+    const out = parseToolResult<Record<string, unknown>>(
+      await h.callTool('housecallpro_healthcheck', {}),
+    );
+
+    expect(out['status']).toBe('ok');
+    expect(out['invoice_number']).toBe('900000002');
+    // The point of a healthcheck is reachability: it must actually call out.
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('still reports ok for an estimate link', async () => {
+    const estimateBody = {
+      estimate: { data: { estimate_number: '900000001' } },
+      options: { data: [] },
+    };
+    const client = new HousecallProClient(new LinkRegistry({ HOUSECALLPRO_LINK: ESTIMATE_TOKEN }), {
+      fetchImpl: (() =>
+        Promise.resolve(
+          new Response(JSON.stringify(estimateBody), {
+            headers: { 'content-type': 'application/json' },
+          }),
+        )) as unknown as typeof fetch,
+    });
+    const h = await createTestHarness((server) => registerHealthcheckTools(server, client));
+    const out = parseToolResult<Record<string, unknown>>(
+      await h.callTool('housecallpro_healthcheck', {}),
+    );
+    expect(out['status']).toBe('ok');
+    expect(out['estimate_number']).toBe('900000001');
+  });
+
+  it('distinguishes a malformed link from no link at all', async () => {
+    const client = new HousecallProClient(new LinkRegistry({ HOUSECALLPRO_LINK: 'x'.repeat(10) }), {
+      fetchImpl: vi.fn() as unknown as typeof fetch,
+    });
+    const h = await createTestHarness((server) => registerHealthcheckTools(server, client));
+    const out = parseToolResult<Record<string, unknown>>(
+      await h.callTool('housecallpro_healthcheck', {}),
+    );
+    // Reporting this as "no link configured" would hide the parse error.
+    expect(out['status']).toBe('bad_link');
+    expect(String(out['error'])).toMatch(/Not a Housecall Pro customer link/);
+  });
+
+  it('still says no_link_configured when nothing is set', async () => {
+    const client = new HousecallProClient(new LinkRegistry({}), {
+      fetchImpl: vi.fn() as unknown as typeof fetch,
+    });
+    const h = await createTestHarness((server) => registerHealthcheckTools(server, client));
+    const out = parseToolResult<Record<string, unknown>>(
+      await h.callTool('housecallpro_healthcheck', {}),
+    );
+    expect(out['status']).toBe('no_link_configured');
+    expect(out['error']).toBeUndefined();
+  });
+});
+
+describe('declineOptions guards the token shape', () => {
+  it('refuses an invoice token instead of sending it to the estimate endpoint', async () => {
+    const fetchImpl = vi.fn();
+    const client = new HousecallProClient(new LinkRegistry({ HOUSECALLPRO_LINK: INVOICE_TOKEN }), {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await expect(client.declineOptions(['est_1'])).rejects.toThrow(
+      /invoice link.*housecallpro_get_invoice/is,
+    );
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+describe('parseLink rejection message', () => {
+  it('describes both accepted token shapes, not just the estimate one', () => {
+    let message = '';
+    try {
+      parseLink('not-a-link');
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    expect(message).toMatch(/129/);
+    expect(message).toMatch(/32/);
+    expect(message).toMatch(/mobile_invoice|invoices/);
+  });
+});
+
+describe('not-found wording', () => {
+  it('does not call an invoice an estimate', async () => {
+    const client = new HousecallProClient(new LinkRegistry({ HOUSECALLPRO_LINK: INVOICE_TOKEN }), {
+      fetchImpl: (() =>
+        Promise.resolve(new Response('<html>404</html>', { status: 404 }))) as unknown as typeof fetch,
+    });
+    await expect(client.getInvoice()).rejects.toThrow(/404/);
+    await expect(client.getInvoice()).rejects.not.toThrow(/an estimate/);
   });
 });

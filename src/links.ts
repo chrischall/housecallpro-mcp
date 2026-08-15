@@ -123,8 +123,9 @@ export function parseLink(input: string): ParsedLink {
 
   throw new Error(
     'Not a Housecall Pro customer link. Paste the link your pro sent you ' +
-      '(pro.housecallpro.com/mobile_estimate/… or client.housecallpro.com/estimates/…), ' +
-      'or the 129-character retrieval token from the end of it.',
+      '(pro.housecallpro.com/mobile_estimate/… or /mobile_invoice/…, or a ' +
+      'client.housecallpro.com/estimates/… or /invoices/… link), or the retrieval ' +
+      'token from the end of it — 129 characters for an estimate, 32 for an invoice.',
   );
 }
 
