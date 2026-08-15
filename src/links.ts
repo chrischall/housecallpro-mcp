@@ -157,6 +157,23 @@ export class LinkRegistry {
     return this.links.length > 0;
   }
 
+  /**
+   * Why the registry is empty, when it is.
+   *
+   * `unset` and `invalid` need different fixes, and callers must not have to
+   * tell them apart by substring-matching the prose of `resolve()`'s error —
+   * rewording that user-facing string would silently reclassify them.
+   */
+  get problem(): 'unset' | 'invalid' | undefined {
+    if (this.configError !== undefined) return 'invalid';
+    return this.links.length === 0 ? 'unset' : undefined;
+  }
+
+  /** The parse failure behind an `invalid` registry, for reporting. */
+  get problemDetail(): string | undefined {
+    return this.configError;
+  }
+
   /** Resolve a selector to a link; the first configured link is the default. */
   resolve(selector?: string): HousecallLink {
     if (this.configError) throw new McpToolError(this.configError);

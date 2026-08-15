@@ -329,3 +329,32 @@ describe('not-found wording', () => {
     await expect(client.getInvoice()).rejects.not.toThrow(/an estimate/);
   });
 });
+
+describe('config problem classification', () => {
+  it('exposes unset vs invalid on the registry itself', () => {
+    expect(new LinkRegistry({}).problem).toBe('unset');
+    expect(new LinkRegistry({ HOUSECALLPRO_LINK: 'nope' }).problem).toBe('invalid');
+    expect(new LinkRegistry({ HOUSECALLPRO_LINK: INVOICE_TOKEN }).problem).toBeUndefined();
+  });
+
+  it('carries the parse detail only for an invalid registry', () => {
+    expect(new LinkRegistry({}).problemDetail).toBeUndefined();
+    expect(new LinkRegistry({ HOUSECALLPRO_LINK: 'nope' }).problemDetail).toMatch(
+      /Not a Housecall Pro customer link/,
+    );
+  });
+
+  // Regression: classification must not depend on the wording of resolve()'s
+  // error, or rewording that user-facing string silently reclassifies servers.
+  it('does not classify by substring-matching resolve() prose', () => {
+    const reg = new LinkRegistry({});
+    let prose = '';
+    try {
+      reg.resolve();
+    } catch (err) {
+      prose = (err as Error).message;
+    }
+    expect(prose).toMatch(/No Housecall Pro customer link configured/);
+    expect(reg.problem).toBe('unset');
+  });
+});
