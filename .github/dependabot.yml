@@ -6,6 +6,18 @@ updates:
       interval: weekly
     open-pull-requests-limit: 10
     groups:
+      # MUST be first (first matching group wins). vitest and
+      # @vitest/coverage-v8 peer-depend on each other at an exact version, so a
+      # major that escapes the minor/patch-only dev group arrives as two
+      # separate PRs and both fail `npm ci`.
+      vitest:
+        patterns:
+          - vitest
+          - "@vitest/*"
+        update-types:
+          - major
+          - minor
+          - patch
       dev-dependencies:
         dependency-type: development
         update-types:
