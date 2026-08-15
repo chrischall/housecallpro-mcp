@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/chrischall/housecallpro-mcp/compare/v0.1.0...v0.2.0) (2026-08-15)
+
+
+### Features
+
+* accept a link per call, so nothing needs configuring ([#13](https://github.com/chrischall/housecallpro-mcp/issues/13)) ([5083a8d](https://github.com/chrischall/housecallpro-mcp/commit/5083a8d3c1821b65fb51c00a1567ecded063d7a9))
+
 ## 0.1.0 (2026-08-15)
 
 

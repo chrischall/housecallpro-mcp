@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "housecallpro-mcp",
   "display_name": "Housecall Pro",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Read estimates a Housecall Pro contractor sent you, and decline options you don't want.",
   "long_description": "Reads the customer-side Housecall Pro portal from the per-document link your contractor emailed or texted you: estimate line items, totals, tax, and the company behind it. Declining an option is supported and confirm-gated. Approving is not automatable — Housecall Pro gates it behind a reCAPTCHA only the real page can produce.",
   "author": {
