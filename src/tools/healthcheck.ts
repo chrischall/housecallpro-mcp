@@ -24,20 +24,13 @@ export function registerHealthcheckTools(server: McpServer, client: HousecallPro
         links,
       };
 
-      if (links.length === 0) {
-        // An empty registry means either nothing was set or what was set did
-        // not parse. Those need different fixes, and reporting a malformed
-        // link as "no link configured" hides the parse error that says why.
-        try {
-          client.links.resolve();
-          /* c8 ignore next 2 -- resolve() always throws when the list is empty. */
-          result['status'] = 'no_link_configured';
-        } catch (err) {
-          const detail = messageOf(err);
-          const unset = detail.includes('No Housecall Pro customer link configured');
-          result['status'] = unset ? 'no_link_configured' : 'bad_link';
-          if (!unset) result['error'] = detail;
-        }
+      // An empty registry means either nothing was set or what was set did not
+      // parse. Those need different fixes, and reporting a malformed link as
+      // "no link configured" hides the parse error that says why.
+      const problem = client.links.problem;
+      if (problem) {
+        result['status'] = problem === 'invalid' ? 'bad_link' : 'no_link_configured';
+        if (problem === 'invalid') result['error'] = client.links.problemDetail;
         result['hint'] =
           'Set HOUSECALLPRO_LINK to the estimate or invoice link your pro sent you.';
         return textResult(result);

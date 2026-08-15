@@ -35,10 +35,10 @@ whichever applies:
 # What your contractor sent (short form)
 SHORT='https://pro.housecallpro.com/mobile_estimate/XXXXXXXXXX'   # or /mobile_invoice/…
 
-# Resolve it to the retrieval token (129 chars: two 64-char hex halves + "_")
+# Resolve it to the retrieval token (an estimate's is 129 chars, an invoice's 32)
 HCP_TOKEN=$(curl -sI "$SHORT" | tr -d '\r' | awk 'tolower($1)=="location:"{print $2}' | sed 's#.*/##')
 
-# If you already have a client.housecallpro.com/estimates/<token> link, just:
+# If you already have a client.housecallpro.com/estimates/… or /invoices/… link, just:
 # HCP_TOKEN='<the last path segment>'
 
 echo "${#HCP_TOKEN}"   # 129 for an estimate, 32 for an invoice
