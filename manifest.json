@@ -1,0 +1,33 @@
+{
+  "manifest_version": "0.2",
+  "name": "housecallpro-mcp",
+  "display_name": "Housecall Pro",
+  "version": "0.0.0",
+  "description": "Read estimates a Housecall Pro contractor sent you, and decline options you don't want.",
+  "long_description": "Reads the customer-side Housecall Pro portal from the per-document link your contractor emailed or texted you: estimate line items, totals, tax, and the company behind it. Declining an option is supported and confirm-gated. Approving is not automatable — Housecall Pro gates it behind a reCAPTCHA only the real page can produce.",
+  "author": { "name": "Claude Code (AI)", "url": "https://www.anthropic.com/claude" },
+  "homepage": "https://github.com/chrischall/housecallpro-mcp",
+  "documentation": "https://github.com/chrischall/housecallpro-mcp#readme",
+  "support": "https://github.com/chrischall/housecallpro-mcp/issues",
+  "license": "MIT",
+  "keywords": ["housecall-pro", "estimates", "home-services", "contractor"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/bundle.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/bundle.js"],
+      "env": { "HOUSECALLPRO_LINK": "${user_config.link}" }
+    }
+  },
+  "user_config": {
+    "link": {
+      "type": "string",
+      "title": "Customer link",
+      "description": "The estimate or invoice link your contractor sent you (pro.housecallpro.com/mobile_estimate/… or client.housecallpro.com/estimates/…).",
+      "sensitive": true,
+      "required": false
+    }
+  },
+  "compatibility": { "runtimes": { "node": ">=22.5" } }
+}

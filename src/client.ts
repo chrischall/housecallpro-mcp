@@ -1,0 +1,206 @@
+/**
+ * Housecall Pro consumer client.
+ *
+ * Everything here is plain server-side `fetch` against `app.housecallpro.com`.
+ * The consumer API is not bot-walled — a bare `curl` gets a 200 — so unlike the
+ * realty cohort this repo needs no browser bridge, and hosts cleanly.
+ *
+ * Auth is a per-document retrieval token, placed two different ways depending
+ * on the call. Reads put it in the path and send no `Authorization` header at
+ * all; writes send `Authorization: Token <token>` and name the subject in the
+ * body. That asymmetry is the API's, not ours — see docs/HOUSECALLPRO-API.md.
+ */
+import { McpToolError, messageOf } from '@chrischall/mcp-utils';
+import { API_ORIGIN, RETRIEVAL_TOKEN_RE, type HousecallLink, type LinkRegistry } from './links.js';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The SPA sends this on every call. It carries no identity — it is a
+ * base64 blob naming the platform — but sending what the client sends keeps us
+ * off any heuristic that notices its absence.
+ */
+const DEVICE_CONTEXT = Buffer.from(
+  JSON.stringify({ os: { name: 'Web' }, userAgent: 'housecallpro-mcp' }),
+).toString('base64');
+
+export interface HousecallProClientOptions {
+  fetchImpl?: typeof fetch;
+}
+
+/** Loose: only the fields we read are named, so an upstream addition can't break us. */
+export interface EstimateResponse {
+  estimate: { data: Record<string, unknown> };
+  options: { data: Record<string, unknown>[] };
+  [key: string]: unknown;
+}
+
+export class HousecallProClient {
+  private readonly fetchImpl: typeof fetch;
+  /** label -> resolved long token, so a short link costs one redirect per process. */
+  private readonly resolved = new Map<string, string>();
+
+  constructor(
+    readonly links: LinkRegistry,
+    opts: HousecallProClientOptions = {},
+  ) {
+    this.fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+  }
+
+  /** The long retrieval token for a link, following a short link's 301 once. */
+  async tokenFor(selector?: string): Promise<string> {
+    const link: HousecallLink = this.links.resolve(selector);
+    if (link.token) return link.token;
+
+    const cached = this.resolved.get(link.label);
+    if (cached) return cached;
+
+    const token = await this.followShortLink(link);
+    this.resolved.set(link.label, token);
+    return token;
+  }
+
+  /** Full estimate document behind a customer link. */
+  async getEstimate(selector?: string): Promise<EstimateResponse> {
+    const token = await this.tokenFor(selector);
+    const body = await this.getJson(`/alpha/customer_estimates/${encodeURIComponent(token)}`);
+    return body as unknown as EstimateResponse;
+  }
+
+  /** Public company record. The uuid comes from an estimate's `organization_id`. */
+  async getOrganization(organizationId: string): Promise<Record<string, unknown>> {
+    if (!UUID_RE.test(organizationId)) {
+      throw new McpToolError(
+        'organization_id must be a UUID — take it from an estimate\'s `organization_id` field.',
+      );
+    }
+    return this.getJson(`/alpha/organizations/${organizationId}`);
+  }
+
+  /**
+   * Decline one or more estimate options.
+   *
+   * The only mutation this server can actually perform: unlike approval, the
+   * decline path carries no captcha token.
+   */
+  async declineOptions(optionUuids: string[], selector?: string): Promise<Record<string, unknown>> {
+    if (optionUuids.length === 0) {
+      throw new McpToolError('Pass at least one estimate option uuid to decline.');
+    }
+    const token = await this.tokenFor(selector);
+
+    const body = new URLSearchParams();
+    for (const uuid of optionUuids) body.append('estimate_option_uuids[]', uuid);
+
+    return this.request('/api/estimates/estimate_options/customer_declines', {
+      method: 'POST',
+      headers: {
+        authorization: `Token ${token}`,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body,
+    });
+  }
+
+  /**
+   * Approving is not automatable, and this says so rather than failing oddly.
+   *
+   * `POST /api/estimates/estimate_options/customer_approvals` requires
+   * `response_token`, a reCAPTCHA v3 token minted in-page for the action
+   * `estimates_customer_approvals`. No server-side client can produce one, and
+   * neither can the fetchproxy bridge — it issues `fetch` calls, it does not
+   * run page JS. Rather than post a request that will be rejected (or, worse,
+   * might not be, and would then bind the user to a price), refuse here.
+   */
+  async approveOptions(_optionUuids: string[], _selector?: string): Promise<never> {
+    throw new McpToolError(
+      'Approving an estimate cannot be automated. Housecall Pro gates approval behind a ' +
+        'reCAPTCHA token that only the real page can mint, so this server will not attempt ' +
+        'it. Open the estimate link in a browser and press Approve there. ' +
+        'Declining an estimate is not gated and is available as housecallpro_decline_estimate.',
+    );
+  }
+
+  private async followShortLink(link: HousecallLink): Promise<string> {
+    const shortUrl = link.shortUrl;
+    /* c8 ignore next 3 -- a link has a token or a shortUrl; this guards the type only. */
+    if (!shortUrl) {
+      throw new McpToolError(`Link "${link.label}" has neither a token nor a short URL.`);
+    }
+
+    let res: Response;
+    try {
+      res = await this.fetchImpl(shortUrl, { redirect: 'manual', headers: this.baseHeaders() });
+    } catch (err) {
+      throw new McpToolError(`Could not reach housecallpro.com: ${messageOf(err)}`);
+    }
+
+    const location = res.headers.get('location') ?? '';
+    const tail = location.split('?')[0]?.split('/').filter(Boolean).pop() ?? '';
+    if (!RETRIEVAL_TOKEN_RE.test(tail)) {
+      throw new McpToolError(
+        `Could not resolve the short link for "${link.label}" (HTTP ${res.status}). ` +
+          'Short links expire — ask your pro to resend it, or paste the full ' +
+          'client.housecallpro.com link instead.',
+      );
+    }
+    return tail;
+  }
+
+  private baseHeaders(): Record<string, string> {
+    return {
+      accept: 'application/json',
+      'segment-device-context': DEVICE_CONTEXT,
+      origin: 'https://client.housecallpro.com',
+      referer: 'https://client.housecallpro.com/',
+    };
+  }
+
+  private async getJson(path: string): Promise<Record<string, unknown>> {
+    return this.request(path, { method: 'GET' });
+  }
+
+  private async request(path: string, init: RequestInit): Promise<Record<string, unknown>> {
+    const url = `${API_ORIGIN}${path}`;
+
+    let res: Response;
+    try {
+      res = await this.fetchImpl(url, {
+        ...init,
+        headers: { ...this.baseHeaders(), ...(init.headers as Record<string, string> | undefined) },
+      });
+    } catch (err) {
+      throw new McpToolError(`Could not reach housecallpro.com: ${messageOf(err)}`);
+    }
+
+    // Deliberately not SessionNotAuthenticatedError: there is no session and
+    // nothing to sign in to. A 401 here means the link itself is spent.
+    if (res.status === 401 || res.status === 403) {
+      throw new McpToolError(
+        `Housecall Pro rejected the customer link (HTTP ${res.status}). The link has expired ` +
+          'or been revoked — ask your pro to resend it, then update HOUSECALLPRO_LINK.',
+      );
+    }
+
+    if (res.status === 404) {
+      throw new McpToolError(
+        'Housecall Pro says this document no longer exists (HTTP 404). A pro can delete ' +
+          'or re-issue an estimate, which invalidates the old link.',
+      );
+    }
+
+    if (!res.ok) {
+      throw new McpToolError(`Housecall Pro returned HTTP ${res.status}.`);
+    }
+
+    const text = await res.text();
+    try {
+      return JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      throw new McpToolError(
+        `Housecall Pro returned an unexpected non-JSON response (HTTP ${res.status}, ` +
+          `${text.length} bytes). This usually means the link is no longer valid.`,
+      );
+    }
+  }
+}

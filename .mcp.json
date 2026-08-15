@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "housecallpro": {
+      "command": "npx",
+      "args": ["-y", "@chrischall/housecallpro-mcp"],
+      "env": {}
+    }
+  }
+}
