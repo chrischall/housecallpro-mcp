@@ -101,3 +101,25 @@ describe('housecallpro_healthcheck', () => {
     expect(out.estimate_number).toBe('900000001');
   });
 });
+
+describe('housecallpro_list_links', () => {
+  it('returns labels and kinds, and never a token', async () => {
+    const h = await harnessWith(json(ESTIMATE) as unknown as typeof fetch, {
+      HOUSECALLPRO_LINKS: JSON.stringify([
+        { label: 'tankless', url: `https://client.housecallpro.com/estimates/${TOKEN}` },
+        { label: 'hvac', url: TOKEN },
+      ]),
+    });
+
+    const res = await h.callTool('housecallpro_list_links', {});
+    const out = parseToolResult<{ links: { label: string; kind: string; isDefault: boolean }[] }>(
+      res,
+    );
+
+    expect(out.links).toEqual([
+      { label: 'tankless', kind: 'estimate', isDefault: true },
+      { label: 'hvac', kind: 'unknown', isDefault: false },
+    ]);
+    expect(JSON.stringify(res)).not.toContain(TOKEN);
+  });
+});
