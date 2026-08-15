@@ -279,7 +279,7 @@ describe('healthcheck with an invoice-only configuration', () => {
     expect(String(out['error'])).toMatch(/Not a Housecall Pro customer link/);
   });
 
-  it('still says no_link_configured when nothing is set', async () => {
+  it('reports unconfigured as healthy, not an error', async () => {
     const client = new HousecallProClient(new LinkRegistry({}), {
       fetchImpl: vi.fn() as unknown as typeof fetch,
     });
@@ -287,7 +287,7 @@ describe('healthcheck with an invoice-only configuration', () => {
     const out = parseToolResult<Record<string, unknown>>(
       await h.callTool('housecallpro_healthcheck', {}),
     );
-    expect(out['status']).toBe('no_link_configured');
+    expect(out['status']).toBe('ok_no_link_configured');
     expect(out['error']).toBeUndefined();
   });
 });

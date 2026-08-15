@@ -29,10 +29,16 @@ export function registerHealthcheckTools(server: McpServer, client: HousecallPro
       // "no link configured" hides the parse error that says why.
       const problem = client.links.problem;
       if (problem) {
-        result['status'] = problem === 'invalid' ? 'bad_link' : 'no_link_configured';
+        // Not configuring anything is the normal case: Housecall Pro issues a
+        // disposable link per document, so most callers paste one per call
+        // rather than setting an environment variable. Only a link that failed
+        // to PARSE is actually wrong.
+        result['status'] = problem === 'invalid' ? 'bad_link' : 'ok_no_link_configured';
         if (problem === 'invalid') result['error'] = client.links.problemDetail;
         result['hint'] =
-          'Set HOUSECALLPRO_LINK to the estimate or invoice link your pro sent you.';
+          problem === 'invalid'
+            ? 'Fix or remove HOUSECALLPRO_LINK; you can also just pass a link to each tool.'
+            : 'Pass a link to each tool, or set HOUSECALLPRO_LINKS to save some by label.';
         return textResult(result);
       }
 

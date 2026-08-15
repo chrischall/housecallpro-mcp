@@ -14,9 +14,11 @@ import { McpToolError, messageOf } from '@chrischall/mcp-utils';
 import {
   API_ORIGIN,
   RETRIEVAL_TOKEN_RE,
+  parseLink,
   tokenShape,
   type HousecallLink,
   type LinkRegistry,
+  type ParsedLink,
 } from './links.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -29,6 +31,20 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const DEVICE_CONTEXT = Buffer.from(
   JSON.stringify({ os: { name: 'Web' }, userAgent: 'housecallpro-mcp' }),
 ).toString('base64');
+
+/**
+ * Is this argument an attempt at a link, rather than a registry label?
+ *
+ * Deliberately loose: a URL, anything naming the service's domain, or a long
+ * hex/underscore run (a retrieval token, well-formed or not). Labels are short
+ * human words like `tankless`, so they cannot collide with any of these.
+ */
+function looksLikeLinkAttempt(value: string): boolean {
+  const v = value.trim();
+  return (
+    /^https?:\/\//i.test(v) || /housecallpro\.com/i.test(v) || /^[0-9a-f_]{20,}$/i.test(v)
+  );
+}
 
 export interface HousecallProClientOptions {
   fetchImpl?: typeof fetch;
@@ -48,7 +64,7 @@ export interface InvoiceResponse {
 
 export class HousecallProClient {
   private readonly fetchImpl: typeof fetch;
-  /** label -> resolved long token, so a short link costs one redirect per process. */
+  /** link URL -> resolved long token, so a short link costs one redirect per client. */
   private readonly resolved = new Map<string, string>();
 
   constructor(
@@ -58,17 +74,47 @@ export class HousecallProClient {
     this.fetchImpl = opts.fetchImpl ?? globalThis.fetch;
   }
 
-  /** The long retrieval token for a link, following a short link's 301 once. */
-  async tokenFor(selector?: string): Promise<string> {
-    const link: HousecallLink = this.links.resolve(selector);
+  /**
+   * The long retrieval token for a link, following a short link's 301 once.
+   *
+   * `linkOrLabel` is a real link (a pasted URL or a bare token) when it parses
+   * as one, and otherwise a label into the configured registry. Links come
+   * first because they are unambiguous: a Housecall Pro link cannot be mistaken
+   * for a label, but a label could shadow a link the caller actually meant.
+   *
+   * Accepting a link per call is what makes this server usable with nothing
+   * configured — which is the normal case, since Housecall Pro issues a
+   * separate disposable link per document and there is no standing one to put
+   * in an environment variable.
+   */
+  async tokenFor(linkOrLabel?: string): Promise<string> {
+    const link = this.linkFor(linkOrLabel);
     if (link.token) return link.token;
 
-    const cached = this.resolved.get(link.label);
+    const key = link.shortUrl as string;
+    const cached = this.resolved.get(key);
     if (cached) return cached;
 
     const token = await this.followShortLink(link);
-    this.resolved.set(link.label, token);
+    this.resolved.set(key, token);
     return token;
+  }
+
+  /**
+   * A pasted link if it parses as one, else a lookup in the configured registry.
+   *
+   * The distinction is made BEFORE parsing, not by catching a parse failure.
+   * Swallowing the failure would replace `parseLink`'s specific diagnosis —
+   * "Refusing a link on evil.example.com" — with a generic "no link
+   * configured" or, worse, an "Unknown link \"<the url>\"" that echoes the
+   * offending URL back. So anything that is evidently an attempt at a link
+   * gets `parseLink`'s error verbatim; only a plain word can be a label.
+   */
+  private linkFor(linkOrLabel?: string): HousecallLink {
+    if (linkOrLabel && looksLikeLinkAttempt(linkOrLabel)) {
+      return { label: 'inline', ...parseLink(linkOrLabel) };
+    }
+    return this.links.resolve(linkOrLabel);
   }
 
   /**
@@ -112,7 +158,7 @@ export class HousecallProClient {
     const got = tokenShape(token);
     if (!got || got === want) return;
 
-    const named = selector ? `Link "${selector}"` : 'The configured link';
+    const named = selector && !looksLikeLinkAttempt(selector) ? `Link "${selector}"` : 'That link';
     const right = got === 'invoice' ? 'housecallpro_get_invoice' : 'housecallpro_get_estimate';
     throw new McpToolError(
       `${named} is ${got === 'invoice' ? 'an invoice' : 'an estimate'} link, not ` +
@@ -196,7 +242,7 @@ export class HousecallProClient {
     const tail = location.split('?')[0]?.split('/').filter(Boolean).pop() ?? '';
     if (!RETRIEVAL_TOKEN_RE.test(tail)) {
       throw new McpToolError(
-        `Could not resolve the short link for "${link.label}" (HTTP ${res.status}). ` +
+        `Could not resolve that short link (HTTP ${res.status}). ` +
           'Short links expire — ask your pro to resend it, or paste the full ' +
           'client.housecallpro.com link instead.',
       );

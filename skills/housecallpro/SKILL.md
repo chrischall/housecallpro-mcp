@@ -20,6 +20,9 @@ plain `curl` gets a `200`. Do not reach for `fpx` here.
 
 ## The one thing to know first
 
+There is no account and no standing link: Housecall Pro sends a separate,
+disposable link per document, so you work from whichever link you were sent.
+
 Your link is a **bearer credential**. Anyone holding it can read the estimate
 and decline it. Keep it in a variable or a file you control, never in a command
 you paste into a shared transcript, and never commit it.

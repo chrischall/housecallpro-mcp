@@ -174,7 +174,7 @@ describe('remaining branches', () => {
       vi.fn().mockResolvedValue(new Response(null, { status: 500 })) as unknown as typeof fetch,
       { HOUSECALLPRO_LINK: 'https://pro.housecallpro.com/mobile_estimate/abc123' },
     );
-    await expect(client.getEstimate()).rejects.toThrow(/Could not resolve the short link/);
+    await expect(client.getEstimate()).rejects.toThrow(/Could not resolve that short link/);
   });
 
   it('rejects a string that looks like a URL but will not parse', () => {

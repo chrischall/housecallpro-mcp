@@ -14,7 +14,13 @@ import { summarizeEstimate, summarizeInvoice } from '../normalize.js';
 const linkArg = z
   .string()
   .optional()
-  .describe('Which configured link to use. Omit when only one is configured.');
+  .describe(
+    'The Housecall Pro link your contractor sent you — paste it directly ' +
+      '(pro.housecallpro.com/mobile_estimate/… or /mobile_invoice/…, or a ' +
+      'client.housecallpro.com/estimates/… or /invoices/… URL), or the retrieval token ' +
+      'from the end of it. Alternatively the label of a link configured in ' +
+      'HOUSECALLPRO_LINKS. Omit only when exactly one link is configured.',
+  );
 
 export function registerEstimateTools(server: McpServer, client: HousecallProClient): void {
   server.registerTool(
