@@ -87,10 +87,10 @@ describe('housecallpro_approve_estimate', () => {
 });
 
 describe('housecallpro_healthcheck', () => {
-  it('reports no_link_configured rather than failing when unconfigured', async () => {
+  it('reports unconfigured as healthy — a per-call link is the normal case', async () => {
     const h = await harnessWith(json(ESTIMATE) as unknown as typeof fetch, {});
     const out = parseToolResult(await h.callTool('housecallpro_healthcheck', {}));
-    expect(out.status).toBe('no_link_configured');
+    expect(out.status).toBe('ok_no_link_configured');
     expect(out.links_configured).toBe(0);
   });
 

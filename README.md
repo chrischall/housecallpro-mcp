@@ -126,7 +126,8 @@ installed. No browser bridge is involved there either.
 Unlike much of this fleet, `app.housecallpro.com` is not bot-walled — a bare
 `curl` gets a `200`. So this server talks to it directly over HTTPS, has no
 `@fetchproxy/server` dependency, needs no extension or signed-in tab, and hosts
-cleanly as a remote connector.
+cleanly as a remote connector — **with no secret to configure**, since the link
+travels as a tool argument rather than an environment variable.
 
 ## What isn't here
 

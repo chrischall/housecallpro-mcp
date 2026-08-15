@@ -14,9 +14,11 @@ import { McpToolError, messageOf } from '@chrischall/mcp-utils';
 import {
   API_ORIGIN,
   RETRIEVAL_TOKEN_RE,
+  parseLink,
   tokenShape,
   type HousecallLink,
   type LinkRegistry,
+  type ParsedLink,
 } from './links.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -58,17 +60,46 @@ export class HousecallProClient {
     this.fetchImpl = opts.fetchImpl ?? globalThis.fetch;
   }
 
-  /** The long retrieval token for a link, following a short link's 301 once. */
-  async tokenFor(selector?: string): Promise<string> {
-    const link: HousecallLink = this.links.resolve(selector);
+  /**
+   * The long retrieval token for a link, following a short link's 301 once.
+   *
+   * `linkOrLabel` is a real link (a pasted URL or a bare token) when it parses
+   * as one, and otherwise a label into the configured registry. Links come
+   * first because they are unambiguous: a Housecall Pro link cannot be mistaken
+   * for a label, but a label could shadow a link the caller actually meant.
+   *
+   * Accepting a link per call is what makes this server usable with nothing
+   * configured — which is the normal case, since Housecall Pro issues a
+   * separate disposable link per document and there is no standing one to put
+   * in an environment variable.
+   */
+  async tokenFor(linkOrLabel?: string): Promise<string> {
+    const link = this.linkFor(linkOrLabel);
     if (link.token) return link.token;
 
-    const cached = this.resolved.get(link.label);
+    const key = link.shortUrl as string;
+    const cached = this.resolved.get(key);
     if (cached) return cached;
 
     const token = await this.followShortLink(link);
-    this.resolved.set(link.label, token);
+    this.resolved.set(key, token);
     return token;
+  }
+
+  /** A pasted link if it parses as one, else a lookup in the configured registry. */
+  private linkFor(linkOrLabel?: string): HousecallLink {
+    if (linkOrLabel) {
+      let parsed: ParsedLink | undefined;
+      try {
+        parsed = parseLink(linkOrLabel);
+      } catch {
+        // Not a link — fall through and treat it as a registry label. A label
+        // that matches nothing produces the registry's own error, which lists
+        // what IS configured.
+      }
+      if (parsed) return { label: 'inline', ...parsed };
+    }
+    return this.links.resolve(linkOrLabel);
   }
 
   /**
@@ -112,7 +143,8 @@ export class HousecallProClient {
     const got = tokenShape(token);
     if (!got || got === want) return;
 
-    const named = selector ? `Link "${selector}"` : 'The configured link';
+    const named =
+      selector && !this.isInlineLink(selector) ? `Link "${selector}"` : 'That link';
     const right = got === 'invoice' ? 'housecallpro_get_invoice' : 'housecallpro_get_estimate';
     throw new McpToolError(
       `${named} is ${got === 'invoice' ? 'an invoice' : 'an estimate'} link, not ` +
@@ -178,6 +210,16 @@ export class HousecallProClient {
     );
   }
 
+  /** Whether a tool argument was a pasted link rather than a configured label. */
+  private isInlineLink(value: string): boolean {
+    try {
+      parseLink(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private async followShortLink(link: HousecallLink): Promise<string> {
     const shortUrl = link.shortUrl;
     /* c8 ignore next 3 -- a link has a token or a shortUrl; this guards the type only. */
@@ -196,7 +238,7 @@ export class HousecallProClient {
     const tail = location.split('?')[0]?.split('/').filter(Boolean).pop() ?? '';
     if (!RETRIEVAL_TOKEN_RE.test(tail)) {
       throw new McpToolError(
-        `Could not resolve the short link for "${link.label}" (HTTP ${res.status}). ` +
+        `Could not resolve that short link (HTTP ${res.status}). ` +
           'Short links expire — ask your pro to resend it, or paste the full ' +
           'client.housecallpro.com link instead.',
       );
