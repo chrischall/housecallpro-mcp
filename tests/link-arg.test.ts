@@ -96,12 +96,48 @@ describe('a link passed per call, with nothing configured', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('rejects a foreign host passed per call', async () => {
+  // Asserting /housecallpro\.com/ here was a FALSE GREEN: that substring also
+  // appears in the "no link configured" fallback's own boilerplate, so the test
+  // passed while parseLink's refusal was being swallowed. Assert the specific
+  // diagnosis instead.
+  it('surfaces the off-host refusal itself, not a generic fallback', async () => {
     const fetchImpl = vi.fn();
     await expect(
       unconfigured(fetchImpl).getEstimate('https://evil.example.com/estimates/x'),
-    ).rejects.toThrow(/housecallpro\.com/);
+    ).rejects.toThrow(/Refusing a link on evil\.example\.com/);
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('surfaces the off-host refusal even when labels ARE configured', async () => {
+    const fetchImpl = vi.fn();
+    const client = new HousecallProClient(
+      new LinkRegistry({
+        HOUSECALLPRO_LINKS: JSON.stringify([{ label: 'tankless', url: ESTIMATE_TOKEN }]),
+      }),
+      { fetchImpl: fetchImpl as unknown as typeof fetch },
+    );
+    // The old fallback said `Unknown link "<the url>"`, echoing the foreign URL.
+    const err = await client.getEstimate('https://evil.example.com/estimates/x').catch((e) => e);
+    expect(err.message).toMatch(/Refusing a link on evil\.example\.com/);
+    expect(err.message).not.toMatch(/Unknown link/);
+  });
+
+  it('keeps parseLink\'s format guidance for an unrecognised housecallpro URL', async () => {
+    await expect(
+      unconfigured(vi.fn()).getEstimate('https://www.housecallpro.com/pricing'),
+    ).rejects.toThrow(/Not a Housecall Pro customer link/);
+  });
+
+  it('still treats a plain word as a registry label', async () => {
+    await expect(unconfigured(vi.fn()).getEstimate('tankless')).rejects.toThrow(
+      /No Housecall Pro customer link configured/,
+    );
+  });
+
+  it('treats a malformed bare token as a link attempt, not a label', async () => {
+    await expect(unconfigured(vi.fn()).getEstimate('abcdef0123456789abcdef0123')).rejects.toThrow(
+      /Not a Housecall Pro customer link/,
+    );
   });
 
   it('still tells the user what to do when neither a link nor config exists', async () => {

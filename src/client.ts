@@ -32,6 +32,20 @@ const DEVICE_CONTEXT = Buffer.from(
   JSON.stringify({ os: { name: 'Web' }, userAgent: 'housecallpro-mcp' }),
 ).toString('base64');
 
+/**
+ * Is this argument an attempt at a link, rather than a registry label?
+ *
+ * Deliberately loose: a URL, anything naming the service's domain, or a long
+ * hex/underscore run (a retrieval token, well-formed or not). Labels are short
+ * human words like `tankless`, so they cannot collide with any of these.
+ */
+function looksLikeLinkAttempt(value: string): boolean {
+  const v = value.trim();
+  return (
+    /^https?:\/\//i.test(v) || /housecallpro\.com/i.test(v) || /^[0-9a-f_]{20,}$/i.test(v)
+  );
+}
+
 export interface HousecallProClientOptions {
   fetchImpl?: typeof fetch;
 }
@@ -50,7 +64,7 @@ export interface InvoiceResponse {
 
 export class HousecallProClient {
   private readonly fetchImpl: typeof fetch;
-  /** label -> resolved long token, so a short link costs one redirect per process. */
+  /** link URL -> resolved long token, so a short link costs one redirect per client. */
   private readonly resolved = new Map<string, string>();
 
   constructor(
@@ -86,18 +100,19 @@ export class HousecallProClient {
     return token;
   }
 
-  /** A pasted link if it parses as one, else a lookup in the configured registry. */
+  /**
+   * A pasted link if it parses as one, else a lookup in the configured registry.
+   *
+   * The distinction is made BEFORE parsing, not by catching a parse failure.
+   * Swallowing the failure would replace `parseLink`'s specific diagnosis —
+   * "Refusing a link on evil.example.com" — with a generic "no link
+   * configured" or, worse, an "Unknown link \"<the url>\"" that echoes the
+   * offending URL back. So anything that is evidently an attempt at a link
+   * gets `parseLink`'s error verbatim; only a plain word can be a label.
+   */
   private linkFor(linkOrLabel?: string): HousecallLink {
-    if (linkOrLabel) {
-      let parsed: ParsedLink | undefined;
-      try {
-        parsed = parseLink(linkOrLabel);
-      } catch {
-        // Not a link — fall through and treat it as a registry label. A label
-        // that matches nothing produces the registry's own error, which lists
-        // what IS configured.
-      }
-      if (parsed) return { label: 'inline', ...parsed };
+    if (linkOrLabel && looksLikeLinkAttempt(linkOrLabel)) {
+      return { label: 'inline', ...parseLink(linkOrLabel) };
     }
     return this.links.resolve(linkOrLabel);
   }
@@ -143,8 +158,7 @@ export class HousecallProClient {
     const got = tokenShape(token);
     if (!got || got === want) return;
 
-    const named =
-      selector && !this.isInlineLink(selector) ? `Link "${selector}"` : 'That link';
+    const named = selector && !looksLikeLinkAttempt(selector) ? `Link "${selector}"` : 'That link';
     const right = got === 'invoice' ? 'housecallpro_get_invoice' : 'housecallpro_get_estimate';
     throw new McpToolError(
       `${named} is ${got === 'invoice' ? 'an invoice' : 'an estimate'} link, not ` +
@@ -208,16 +222,6 @@ export class HousecallProClient {
         'it. Open the estimate link in a browser and press Approve there. ' +
         'Declining an estimate is not gated and is available as housecallpro_decline_estimate.',
     );
-  }
-
-  /** Whether a tool argument was a pasted link rather than a configured label. */
-  private isInlineLink(value: string): boolean {
-    try {
-      parseLink(value);
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   private async followShortLink(link: HousecallLink): Promise<string> {
