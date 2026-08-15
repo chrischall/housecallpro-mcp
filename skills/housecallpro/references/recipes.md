@@ -90,14 +90,38 @@ POST /api/estimates/estimate_options/customer_approvals
 `estimates_customer_approvals` is the only reCAPTCHA action in the entire
 consumer app. Approve in a browser.
 
+## Invoices — `GET /api/invoices/consumer/v1/invoices/$HCP_TOKEN` (verified)
+
+An invoice token is **32 hex characters**, not the estimate's 129. The document
+is flat — no `{object, data}` wrappers.
+
+| Path | What it is |
+| --- | --- |
+| `.invoice_number` | Human-facing invoice number |
+| `.status` | Display string, e.g. `paid` |
+| `.due_amount` | **integer cents** — the field that decides paid-ness |
+| `.subtotal` / `.total` / `.amount` | **integer cents** |
+| `.company_info.{name,phone_number,email,website,organization_uuid}` | The contractor |
+| `.customer.{uuid,email,mobile_number,card_on_file}` | You |
+| `.payment_options.can_pay_online` | Whether it can still be paid online |
+| `.invoice_count` | How many invoices the job carries |
+
+No line items, and no tax field — tax is `total - subtotal`.
+
+```sh
+jq -r '"#\(.invoice_number) [\(.status)] due $\(.due_amount/100) of $\(.total/100)"' invoice.json
+```
+
+These 404 for an invoice token despite appearing in the bundles — do not use
+them: `/api/invoices/consumer/invoices/{t}`, `/api/v2/consumer/invoices/{t}`,
+`/api/v2/consumer/sent_invoices/{t}`,
+`/api/invoices/linking/consumer/sources/{t}`,
+`/api/v2/consumer/invoices/{t}/invoice_or_estimate_pdf`.
+`/alpha/jobs/{t}` answers 401 — it wants a different credential.
+
 ## Other endpoints (unverified)
 
 Read out of the SPA bundles; shapes unconfirmed.
-
-**Invoices** — `/api/invoices/consumer/invoices/{id}`,
-`/api/invoices/consumer/v1/invoices/{id}`, `/api/v2/consumer/invoices/{id}`,
-`/api/v2/consumer/sent_invoices/{id}`,
-`/api/v2/consumer/invoices/{id}/invoice_or_estimate_pdf`
 
 **Account-level portal (OTP login, spans all documents from one pro)** —
 `/api/customer_portal/request_otp`, `/api/customer_portal/verify_otp`,

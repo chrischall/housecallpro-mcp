@@ -98,14 +98,14 @@ describe.runIf(existsSync(BUNDLE) && existsSync(BIN))('built server boots', () =
 
     const names = await handshake(join(dir, 'bundle.js'), dir);
 
-    expect(names.length).toBeGreaterThanOrEqual(6);
+    expect(names.length).toBeGreaterThanOrEqual(7);
     expect(names).toContain('housecallpro_get_estimate');
   }, 30_000);
 
   it('serves tools from the bin entry with node_modules present', async () => {
     const names = await handshake(BIN, root);
 
-    expect(names.length).toBeGreaterThanOrEqual(6);
+    expect(names.length).toBeGreaterThanOrEqual(7);
     expect(names).toContain('housecallpro_healthcheck');
   }, 30_000);
 });

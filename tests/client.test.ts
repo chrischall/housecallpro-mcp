@@ -17,7 +17,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 function estimateBody() {
   return {
     object: 'customer_estimate',
-    estimate: { object: 'customer_estimate', data: { estimate_number: '210132782' } },
+    estimate: { object: 'customer_estimate', data: { estimate_number: '900000001' } },
     options: { object: 'list', data: [] },
   };
 }
@@ -39,7 +39,7 @@ describe('HousecallProClient.getEstimate', () => {
 
     const out = await client.getEstimate();
 
-    expect(out.estimate.data.estimate_number).toBe('210132782');
+    expect(out.estimate.data.estimate_number).toBe('900000001');
     const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(`https://app.housecallpro.com/alpha/customer_estimates/${TOKEN}`);
     expect(init.method ?? 'GET').toBe('GET');

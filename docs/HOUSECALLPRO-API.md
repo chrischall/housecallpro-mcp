@@ -30,13 +30,17 @@ GET https://pro.housecallpro.com/mobile_estimate/<short>
   -> 301 Location: https://client.housecallpro.com/estimates/<retrieval-token>
 ```
 
-The retrieval token is 129 characters: two 64-char lowercase hex halves joined
-by `_`. `client.housecallpro.com` serves a 1,407-byte SPA shell for *every*
+**Retrieval tokens come in two shapes, and they are not interchangeable.** An
+estimate token is 129 characters — two 64-char lowercase hex halves joined by
+`_`. An **invoice token is a bare 32-char lowercase hex string**. Both verified
+against live links. They address different endpoints, so a single "retrieval
+token" regex is wrong; `src/links.ts` keeps them distinguishable and the client
+refuses a token pointed at the wrong endpoint before spending a request. `client.housecallpro.com` serves a 1,407-byte SPA shell for *every*
 route — there is no server-rendered data — so all data comes from XHR against
 `app.housecallpro.com`.
 
-Known short-link prefixes, all resolving to a `:customerRetrievalToken` route:
-`/mobile_estimate/<short>`, and the SPA routes `/estimates/:token`,
+Known short-link prefixes: `/mobile_estimate/<short>` and
+`/mobile_invoice/<short>` — both verified. SPA routes: `/estimates/:token`,
 `/invoices/:token`, `/service_agreement/:token`, `/add_tip/:token`.
 
 ## Auth
@@ -127,6 +131,41 @@ overstates every figure 100x, so `src/normalize.ts` emits each money field twice
 verifying an approve/decline actually landed. Do not diff the whole object:
 several fields are presentation state.
 
+### `GET /api/invoices/consumer/v1/invoices/<invoice-token>` — verified
+
+`200 application/json`, ~1 KB. No auth header needed. **Note the `v1` segment:**
+`/api/invoices/consumer/invoices/<token>` — the same path without it — returns
+`404`, as do `/api/v2/consumer/invoices/<token>` and
+`/api/v2/consumer/sent_invoices/<token>`. All four appear in the SPA's bundles;
+only the `v1` one answers. This is exactly why endpoints get probed rather than
+transcribed.
+
+The document is **flat** — none of the estimate's `{object, data}` wrappers.
+
+```
+object: "consumer_invoice"
+amount, subtotal, total, due_amount        // integer cents
+invoice_number, invoice_count, status      // status e.g. "paid"
+template                                   // e.g. "dynamic"
+company_info: {name, logo_url, organization_uuid, can_accept_gratuity,
+               country, analytics_uuid, phone_number, email, website}
+customer: {email, card_on_file, uuid, mobile_number}
+payment_options: {cc_enabled, ach_enabled, can_save_card_on_file,
+                  can_pay_online, klarna_enabled, paypal_enabled,
+                  paypal_pay_later_enabled, paypal_venmo_enabled}
+financing_options[], videos[], cross_selling_products
+```
+
+**There are no line items.** Not an omission in the capture — a paid invoice
+renders in the portal as a summary ("Thanks for your payment / $0.00 due"), and
+the API returns exactly that. There is also **no tax field**: the portal's tax
+figure is `total - subtotal`, which `summarizeInvoice` derives.
+
+Money is integer cents here too — a live invoice returned `total: 37888`,
+`subtotal: 35000` for a document showing $378.88 with $28.88 tax.
+
+`due_amount` is the field that decides paid-ness; `status` is a display string.
+
 ### `GET /alpha/organizations/<organization-uuid>` — verified
 
 `200 application/json`, ~635 B. No auth header needed. The org uuid comes from
@@ -180,12 +219,14 @@ entries are unprobed.
 `/api/consumer_financing/estimate_financing_details/{id}`,
 `/api/pre_qualifications`
 
-**Invoices** — `/api/invoices/consumer/invoices/{id}`,
-`/api/invoices/consumer/v1/invoices/{id}`,
-`/api/invoices/linking/consumer/sources/{id}`,
-`/api/v2/consumer/invoices/{id}`, `/api/v2/consumer/sent_invoices/{id}`,
-`/api/v2/consumer/invoices/{id}/invoice_or_estimate_pdf`,
-`/api/v2/consumer/invoices/{preview,download,pay_invoice,pay_invoice_ach,create_failed_transaction}`
+**Invoices** — `/api/invoices/consumer/v1/invoices/{token}` (verified). Probed
+and **404 for an invoice token**: `/api/invoices/consumer/invoices/{token}`,
+`/api/v2/consumer/invoices/{token}`, `/api/v2/consumer/sent_invoices/{token}`,
+`/api/invoices/linking/consumer/sources/{token}`,
+`/api/v2/consumer/invoices/{token}/invoice_or_estimate_pdf`.
+`/alpha/jobs/{token}` answers **401** with or without an `Authorization: Token`
+header — it exists but takes a different credential.
+Unprobed: `/api/v2/consumer/invoices/{preview,download,pay_invoice,pay_invoice_ach,create_failed_transaction}`
 
 **Customer portal (account-level, OTP)** — `/api/customer_portal/request_otp`,
 `/api/customer_portal/verify_otp`, `/api/customer_portal/organization/{id}`,

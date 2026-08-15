@@ -9,7 +9,7 @@ import { schemaConfirm, textResult, toolAnnotations } from '@chrischall/mcp-util
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { HousecallProClient } from '../client.js';
-import { summarizeEstimate } from '../normalize.js';
+import { summarizeEstimate, summarizeInvoice } from '../normalize.js';
 
 const linkArg = z
   .string()
@@ -40,6 +40,29 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
     async ({ link, raw }) => {
       const estimate = await client.getEstimate(link);
       return textResult(raw ? estimate : summarizeEstimate(estimate));
+    },
+  );
+
+  server.registerTool(
+    'housecallpro_get_invoice',
+    {
+      description:
+        'Read an invoice a Housecall Pro contractor sent you: amount, subtotal, tax, what ' +
+        'is still owed, and whether it can be paid online. Money is returned both as ' +
+        'integer cents (`*_cents`) and dollars (`*_usd`). Note this document carries no ' +
+        'line items — the portal shows a summary only.',
+      annotations: toolAnnotations({ title: 'Get invoice', openWorld: true }),
+      inputSchema: {
+        link: linkArg,
+        raw: z
+          .boolean()
+          .optional()
+          .describe('Return the full upstream document instead of the summary.'),
+      },
+    },
+    async ({ link, raw }) => {
+      const invoice = await client.getInvoice(link);
+      return textResult(raw ? invoice : summarizeInvoice(invoice));
     },
   );
 
