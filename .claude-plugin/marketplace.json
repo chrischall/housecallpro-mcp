@@ -1,20 +1,30 @@
 {
   "name": "housecallpro",
-  "owner": { "name": "Chris Chall", "url": "https://github.com/chrischall" },
+  "owner": {
+    "name": "Chris Chall",
+    "url": "https://github.com/chrischall"
+  },
   "metadata": {
     "description": "Housecall Pro customer-side MCP server: read the estimates your contractor sent you.",
-    "version": "0.0.0"
+    "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "housecallpro",
       "source": "./",
       "description": "Reads the customer-side Housecall Pro portal over plain HTTPS using the per-document retrieval link your contractor sent you.",
-      "version": "0.0.0",
-      "author": { "name": "Chris Chall" },
+      "version": "0.1.0",
+      "author": {
+        "name": "Chris Chall"
+      },
       "homepage": "https://github.com/chrischall/housecallpro-mcp",
       "license": "MIT",
-      "keywords": ["housecall-pro", "estimates", "home-services", "mcp"]
+      "keywords": [
+        "housecall-pro",
+        "estimates",
+        "home-services",
+        "mcp"
+      ]
     }
   ]
 }
