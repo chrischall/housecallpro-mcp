@@ -1,13 +1,22 @@
 {
   "name": "housecallpro",
   "displayName": "Housecall Pro",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Read Housecall Pro estimates from the customer link your contractor sent you, and decline options — via MCP",
-  "author": { "name": "Chris Chall" },
+  "author": {
+    "name": "Chris Chall"
+  },
   "homepage": "https://github.com/chrischall/housecallpro-mcp",
   "repository": "https://github.com/chrischall/housecallpro-mcp",
   "license": "MIT",
-  "keywords": ["housecall-pro", "estimates", "invoices", "home-services", "contractor", "mcp"],
+  "keywords": [
+    "housecall-pro",
+    "estimates",
+    "invoices",
+    "home-services",
+    "contractor",
+    "mcp"
+  ],
   "skills": "./skills/",
   "mcp": "./.mcp.json"
 }
