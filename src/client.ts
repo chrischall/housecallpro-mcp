@@ -11,7 +11,13 @@
  * body. That asymmetry is the API's, not ours — see docs/HOUSECALLPRO-API.md.
  */
 import { McpToolError, messageOf } from '@chrischall/mcp-utils';
-import { API_ORIGIN, RETRIEVAL_TOKEN_RE, type HousecallLink, type LinkRegistry } from './links.js';
+import {
+  API_ORIGIN,
+  RETRIEVAL_TOKEN_RE,
+  tokenShape,
+  type HousecallLink,
+  type LinkRegistry,
+} from './links.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -32,6 +38,11 @@ export interface HousecallProClientOptions {
 export interface EstimateResponse {
   estimate: { data: Record<string, unknown> };
   options: { data: Record<string, unknown>[] };
+  [key: string]: unknown;
+}
+
+/** The consumer invoice document. Flat — no `{object, data}` wrappers. */
+export interface InvoiceResponse {
   [key: string]: unknown;
 }
 
@@ -60,11 +71,53 @@ export class HousecallProClient {
     return token;
   }
 
+  /**
+   * Whether a configured link addresses an invoice rather than an estimate.
+   *
+   * Shape-based, so it works for a bare token whose URL never said which kind
+   * it was. Resolving a short link can hit the network, so this is async.
+   */
+  async isInvoiceLink(selector?: string): Promise<boolean> {
+    return tokenShape(await this.tokenFor(selector)) === 'invoice';
+  }
+
   /** Full estimate document behind a customer link. */
   async getEstimate(selector?: string): Promise<EstimateResponse> {
     const token = await this.tokenFor(selector);
+    this.assertShape(token, 'estimate', selector);
     const body = await this.getJson(`/alpha/customer_estimates/${encodeURIComponent(token)}`);
     return body as unknown as EstimateResponse;
+  }
+
+  /**
+   * Full invoice document behind a customer link.
+   *
+   * Note the `v1` segment: `/api/invoices/consumer/invoices/<token>` (without
+   * it) 404s. Both paths appear in the SPA's bundles; only this one answers.
+   */
+  async getInvoice(selector?: string): Promise<InvoiceResponse> {
+    const token = await this.tokenFor(selector);
+    this.assertShape(token, 'invoice', selector);
+    return this.getJson(`/api/invoices/consumer/v1/invoices/${encodeURIComponent(token)}`);
+  }
+
+  /**
+   * Catch a token pointed at the wrong endpoint before spending a request.
+   *
+   * Estimate and invoice tokens have visibly different shapes, so using an
+   * invoice link with `get_estimate` is detectable up front — and reporting it
+   * as "wrong tool" beats the bare 404 the upstream would return.
+   */
+  private assertShape(token: string, want: 'estimate' | 'invoice', selector?: string): void {
+    const got = tokenShape(token);
+    if (!got || got === want) return;
+
+    const named = selector ? `Link "${selector}"` : 'The configured link';
+    const right = got === 'invoice' ? 'housecallpro_get_invoice' : 'housecallpro_get_estimate';
+    throw new McpToolError(
+      `${named} is ${got === 'invoice' ? 'an invoice' : 'an estimate'} link, not ` +
+        `${want === 'invoice' ? 'an invoice' : 'an estimate'} one. Use ${right} instead.`,
+    );
   }
 
   /** Public company record. The uuid comes from an estimate's `organization_id`. */
@@ -88,6 +141,10 @@ export class HousecallProClient {
       throw new McpToolError('Pass at least one estimate option uuid to decline.');
     }
     const token = await this.tokenFor(selector);
+    // Without this, an invoice token gets posted to the estimate decline
+    // endpoint and the resulting 401 is reported as "your link expired",
+    // sending the user after the wrong problem.
+    this.assertShape(token, 'estimate', selector);
 
     const body = new URLSearchParams();
     for (const uuid of optionUuids) body.append('estimate_option_uuids[]', uuid);
@@ -185,7 +242,7 @@ export class HousecallProClient {
     if (res.status === 404) {
       throw new McpToolError(
         'Housecall Pro says this document no longer exists (HTTP 404). A pro can delete ' +
-          'or re-issue an estimate, which invalidates the old link.',
+          'or re-issue a document, which invalidates the old link.',
       );
     }
 

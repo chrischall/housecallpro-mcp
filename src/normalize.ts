@@ -9,7 +9,7 @@
  * Every accessor tolerates a missing wrapper. This is an undocumented API and
  * it will drift; a summary that degrades beats one that throws.
  */
-import type { EstimateResponse } from './client.js';
+import type { EstimateResponse, InvoiceResponse } from './client.js';
 
 export interface EstimateLineItem {
   name?: string;
@@ -179,5 +179,75 @@ function summarizeOption(option: Record<string, unknown>): EstimateOptionSummary
       unit_price_usd: toUsd(item['unit_price']),
       amount_usd: toUsd(item['amount']),
     })),
+  };
+}
+
+export interface InvoiceSummary {
+  invoice_number?: string;
+  status?: string;
+  /** Derived from the balance, not the status string — the field that decides. */
+  is_paid: boolean;
+  /** Verbatim from the API: integer cents. */
+  subtotal_cents?: number;
+  total_cents?: number;
+  due_cents?: number;
+  /** Derived: the document states no tax, so it is `total - subtotal`. */
+  tax_cents?: number;
+  /** Derived dollars. */
+  subtotal_usd?: number;
+  total_usd?: number;
+  due_usd?: number;
+  tax_usd?: number;
+  can_pay_online?: boolean;
+  invoice_count?: number;
+  company: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    organization_id?: string;
+  };
+}
+
+/**
+ * Projection of the consumer invoice document.
+ *
+ * Unlike the estimate, this one is flat — no `{object, data}` wrappers — and it
+ * carries no line items at all: a paid invoice renders as a summary in the
+ * portal, and the API gives exactly that. Money is integer cents here too.
+ */
+export function summarizeInvoice(raw: InvoiceResponse): InvoiceSummary {
+  const company = isRecord(raw['company_info']) ? raw['company_info'] : {};
+  const payment = isRecord(raw['payment_options']) ? raw['payment_options'] : {};
+
+  const subtotal = num(raw['subtotal']);
+  const total = num(raw['total']);
+  const due = num(raw['due_amount']);
+
+  // The document states no tax. total - subtotal is the only way to surface
+  // the figure the portal shows, so it is derived rather than left missing.
+  const tax = total !== undefined && subtotal !== undefined ? total - subtotal : undefined;
+
+  return {
+    invoice_number: str(raw['invoice_number']),
+    status: str(raw['status']),
+    is_paid: due === 0,
+    subtotal_cents: subtotal,
+    total_cents: total,
+    due_cents: due,
+    tax_cents: tax,
+    subtotal_usd: toUsd(subtotal),
+    total_usd: toUsd(total),
+    due_usd: toUsd(due),
+    tax_usd: toUsd(tax),
+    can_pay_online: bool(payment['can_pay_online']),
+    invoice_count: num(raw['invoice_count']),
+    company: {
+      name: str(company['name']),
+      phone: str(company['phone_number']),
+      email: str(company['email']),
+      website: str(company['website']),
+      organization_id: str(company['organization_uuid']),
+    },
   };
 }

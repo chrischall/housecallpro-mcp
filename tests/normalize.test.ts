@@ -16,7 +16,7 @@ function fixture(): EstimateResponse {
         object: 'estimate',
         id: 'csr_1',
         estimate_uuid: 'csr_1',
-        estimate_number: '210132782',
+        estimate_number: '900000001',
         organization_id: '6e14b390-4b34-4338-a7c2-89d248ca25c8',
         customer_uuid: 'cus_1',
         customer_approval_mode: 'single_option',
@@ -42,7 +42,7 @@ function fixture(): EstimateResponse {
           object: 'option',
           id: 'est_1',
           name: 'Option #1',
-          option_number: '210132782',
+          option_number: '900000001',
           option_date: '2026-08-13',
           status: 'Awaiting Approval',
           approval_date: null,
@@ -97,7 +97,7 @@ describe('summarizeEstimate', () => {
   it('flattens the nested envelope into a flat record', () => {
     const s = summarizeEstimate(fixture());
 
-    expect(s.estimate_number).toBe('210132782');
+    expect(s.estimate_number).toBe('900000001');
     expect(s.organization_id).toBe('6e14b390-4b34-4338-a7c2-89d248ca25c8');
     expect(s.customer_approval_mode).toBe('single_option');
     expect(s.customer_name).toBe('Example Customer');

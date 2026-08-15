@@ -48,8 +48,9 @@ Configure it with the link your contractor sent you:
 HOUSECALLPRO_LINK='https://pro.housecallpro.com/mobile_estimate/XXXXXXXXXX'
 ```
 
-Both link forms work — the short `pro.housecallpro.com/mobile_estimate/…` one
-and the long `client.housecallpro.com/estimates/…` one. For several documents:
+Estimate and invoice links both work, short or long form —
+`pro.housecallpro.com/mobile_estimate/…` and `/mobile_invoice/…`, or
+`client.housecallpro.com/estimates/…` and `/invoices/…`. For several documents:
 
 ```sh
 HOUSECALLPRO_LINKS='[{"label":"tankless","url":"…"},{"label":"hvac","url":"…"}]'
@@ -59,8 +60,8 @@ Then every tool takes an optional `link` selector; with one configured you never
 need it.
 
 > [!IMPORTANT]
-> **Your link is a bearer credential.** Anyone holding it can read the estimate
-> and decline it. It is read from the environment, never logged, and never
+> **Your link is a bearer credential.** Anyone holding it can read the document
+> and, for an estimate, decline it. It is read from the environment, never logged, and never
 > returned in a tool result — `housecallpro_list_links` reports labels only.
 
 ## Tools
@@ -68,11 +69,24 @@ need it.
 | Tool | |
 | --- | --- |
 | `housecallpro_get_estimate` | Line items, totals, tax, company, approval state |
+| `housecallpro_get_invoice` | Amount, subtotal, tax, balance due, payability |
 | `housecallpro_get_company` | The contractor: phone, email, website, arrival window |
 | `housecallpro_list_links` | Configured links, labels only |
 | `housecallpro_decline_estimate` | Decline options — confirm-gated |
 | `housecallpro_approve_estimate` | Always refuses; explains why |
 | `housecallpro_healthcheck` | Reachability + whether a link still resolves |
+
+### Estimates and invoices are different documents
+
+They use different token shapes — 129 characters for an estimate, 32 for an
+invoice — and different endpoints. The client checks the shape and refuses a
+token pointed at the wrong tool before spending a request, rather than passing
+along an unexplained 404.
+
+An invoice carries **no line items** and **no tax field**: a paid invoice renders
+as a summary in the portal and the API returns exactly that, so `tax_usd` is
+derived as `total - subtotal`. `is_paid` comes from the balance, not the status
+string.
 
 ### Money is returned twice
 
@@ -116,9 +130,6 @@ cleanly as a remote connector.
 
 ## What isn't here
 
-- **Invoices.** The endpoints are enumerated in
-  [`docs/HOUSECALLPRO-API.md`](docs/HOUSECALLPRO-API.md) but unverified — read
-  out of the app's JavaScript, never exercised against a real invoice link.
 - **Payments and cards.** Deliberately out of scope.
 - **The account-level portal.** Housecall Pro has an OTP/magic-link customer
   portal that spans every document from one contractor, which is a strictly

@@ -9,7 +9,7 @@ const TOKEN = `${'a'.repeat(64)}_${'b'.repeat(64)}`;
 
 const ESTIMATE = {
   object: 'customer_estimate',
-  estimate: { object: 'customer_estimate', data: { estimate_number: '210132782' } },
+  estimate: { object: 'customer_estimate', data: { estimate_number: '900000001' } },
   options: {
     object: 'list',
     data: [{ object: 'option', id: 'est_1', status: 'Awaiting Approval', approval_date: null, total_amount: 34639 }],
@@ -37,6 +37,7 @@ describe('tool roster', () => {
       'housecallpro_decline_estimate',
       'housecallpro_get_company',
       'housecallpro_get_estimate',
+      'housecallpro_get_invoice',
       'housecallpro_healthcheck',
       'housecallpro_list_links',
     ]);
@@ -97,6 +98,6 @@ describe('housecallpro_healthcheck', () => {
     const h = await harnessWith(json(ESTIMATE) as unknown as typeof fetch);
     const out = parseToolResult(await h.callTool('housecallpro_healthcheck', {}));
     expect(out.status).toBe('ok');
-    expect(out.estimate_number).toBe('210132782');
+    expect(out.estimate_number).toBe('900000001');
   });
 });

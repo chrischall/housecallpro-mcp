@@ -1,9 +1,9 @@
 ---
 name: housecallpro
 description: >-
-  Read a Housecall Pro estimate your contractor sent you — line items, totals,
-  tax, the company behind it — from a shell with plain curl, instead of running
-  the housecallpro-mcp server. Use when you want the data without the MCP, in a
+  Read a Housecall Pro estimate or invoice your contractor sent you — line
+  items, totals, tax, what is still owed, the company behind it — from a shell
+  with plain curl, instead of running the housecallpro-mcp server. Use when you want the data without the MCP, in a
   script, or on a machine where the MCP isn't installed. Covers declining an
   option, and why approving cannot be scripted.
 ---
@@ -26,11 +26,14 @@ you paste into a shared transcript, and never commit it.
 
 ## Setup
 
-Two forms of link exist. The short one redirects to the long one:
+Two forms of link exist, and **estimates and invoices use different token
+shapes**: an estimate token is 129 characters (two 64-char hex halves joined by
+`_`), an invoice token is a bare 32-char hex string. The short link redirects to
+whichever applies:
 
 ```sh
 # What your contractor sent (short form)
-SHORT='https://pro.housecallpro.com/mobile_estimate/XXXXXXXXXX'
+SHORT='https://pro.housecallpro.com/mobile_estimate/XXXXXXXXXX'   # or /mobile_invoice/…
 
 # Resolve it to the retrieval token (129 chars: two 64-char hex halves + "_")
 HCP_TOKEN=$(curl -sI "$SHORT" | tr -d '\r' | awk 'tolower($1)=="location:"{print $2}' | sed 's#.*/##')
@@ -38,7 +41,7 @@ HCP_TOKEN=$(curl -sI "$SHORT" | tr -d '\r' | awk 'tolower($1)=="location:"{print
 # If you already have a client.housecallpro.com/estimates/<token> link, just:
 # HCP_TOKEN='<the last path segment>'
 
-echo "${#HCP_TOKEN}"   # expect 129
+echo "${#HCP_TOKEN}"   # 129 for an estimate, 32 for an invoice
 ```
 
 ## Read the estimate
@@ -122,7 +125,25 @@ this: approving is a binding commitment to a quoted price.
 
 ## Invoices
 
-The invoice endpoints (`/api/invoices/consumer/invoices/…`) are enumerated in
-`references/recipes.md` but are **unverified** — they were read out of the app's
-own JavaScript, not exercised against a real invoice link. Treat their shapes as
-provisional until one is confirmed.
+```sh
+curl -s -H 'Accept: application/json' \
+  "https://app.housecallpro.com/api/invoices/consumer/v1/invoices/$HCP_TOKEN" > invoice.json
+```
+
+**The `v1` segment is required.** `/api/invoices/consumer/invoices/<token>` —
+the same path without it — returns 404, as do the `/api/v2/consumer/invoices/…`
+and `/api/v2/consumer/sent_invoices/…` paths that also appear in the app's
+JavaScript. Only this one answers.
+
+```sh
+jq -r '"\(.company_info.name) — invoice #\(.invoice_number) [\(.status)]",
+       "  subtotal $\(.subtotal/100)",
+       "  tax      $\((.total - .subtotal)/100)",
+       "  total    $\(.total/100)",
+       "  due      $\(.due_amount/100)"' invoice.json
+```
+
+Two things to know: the invoice document has **no line items** (a paid invoice
+renders as a summary in the portal, and the API returns exactly that), and **no
+tax field** — the tax figure is `total - subtotal`. Money is integer cents here
+too. Use `due_amount` rather than `status` to decide whether it is settled.

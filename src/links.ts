@@ -16,8 +16,26 @@ export const CLIENT_ORIGIN = 'https://client.housecallpro.com';
 export const API_ORIGIN = 'https://app.housecallpro.com';
 export const SHORT_ORIGIN = 'https://pro.housecallpro.com';
 
-/** Two 64-char lowercase hex halves joined by `_`. Verified against a live link. */
-export const RETRIEVAL_TOKEN_RE = /^[0-9a-f]{64}_[0-9a-f]{64}$/;
+/**
+ * Retrieval tokens come in two shapes, and they are not interchangeable.
+ *
+ * Estimates use two 64-char lowercase hex halves joined by `_` (129 chars);
+ * invoices use a bare 32-char lowercase hex string. Both verified against live
+ * links. They address different endpoints — see `HousecallProClient` — so the
+ * shape is worth keeping distinguishable rather than collapsing into one regex.
+ */
+export const ESTIMATE_TOKEN_RE = /^[0-9a-f]{64}_[0-9a-f]{64}$/;
+export const INVOICE_TOKEN_RE = /^[0-9a-f]{32}$/;
+
+/** Either shape. */
+export const RETRIEVAL_TOKEN_RE = /^(?:[0-9a-f]{64}_[0-9a-f]{64}|[0-9a-f]{32})$/;
+
+/** Which endpoint family a token's shape implies, when the URL didn't say. */
+export function tokenShape(token: string): 'estimate' | 'invoice' | undefined {
+  if (ESTIMATE_TOKEN_RE.test(token)) return 'estimate';
+  if (INVOICE_TOKEN_RE.test(token)) return 'invoice';
+  return undefined;
+}
 
 /** What a link points at. `unknown` is a bare token, whose kind the URL didn't say. */
 export type LinkKind = 'estimate' | 'invoice' | 'service_agreement' | 'add_tip' | 'unknown';
@@ -105,8 +123,9 @@ export function parseLink(input: string): ParsedLink {
 
   throw new Error(
     'Not a Housecall Pro customer link. Paste the link your pro sent you ' +
-      '(pro.housecallpro.com/mobile_estimate/… or client.housecallpro.com/estimates/…), ' +
-      'or the 129-character retrieval token from the end of it.',
+      '(pro.housecallpro.com/mobile_estimate/… or /mobile_invoice/…, or a ' +
+      'client.housecallpro.com/estimates/… or /invoices/… link), or the retrieval ' +
+      'token from the end of it — 129 characters for an estimate, 32 for an invoice.',
   );
 }
 

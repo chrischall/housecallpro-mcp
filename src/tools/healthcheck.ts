@@ -25,16 +25,38 @@ export function registerHealthcheckTools(server: McpServer, client: HousecallPro
       };
 
       if (links.length === 0) {
-        result['status'] = 'no_link_configured';
+        // An empty registry means either nothing was set or what was set did
+        // not parse. Those need different fixes, and reporting a malformed
+        // link as "no link configured" hides the parse error that says why.
+        try {
+          client.links.resolve();
+          /* c8 ignore next 2 -- resolve() always throws when the list is empty. */
+          result['status'] = 'no_link_configured';
+        } catch (err) {
+          const detail = messageOf(err);
+          const unset = detail.includes('No Housecall Pro customer link configured');
+          result['status'] = unset ? 'no_link_configured' : 'bad_link';
+          if (!unset) result['error'] = detail;
+        }
         result['hint'] =
           'Set HOUSECALLPRO_LINK to the estimate or invoice link your pro sent you.';
         return textResult(result);
       }
 
       try {
-        const estimate = await client.getEstimate();
-        result['status'] = 'ok';
-        result['estimate_number'] = estimate.estimate?.data?.['estimate_number'];
+        // Probe the endpoint the configured link actually addresses. Always
+        // calling getEstimate() reported `error` for a perfectly healthy
+        // invoice-only setup — and threw on the shape check before making any
+        // request, so it did not verify reachability either.
+        if (await client.isInvoiceLink()) {
+          const invoice = await client.getInvoice();
+          result['status'] = 'ok';
+          result['invoice_number'] = invoice['invoice_number'];
+        } else {
+          const estimate = await client.getEstimate();
+          result['status'] = 'ok';
+          result['estimate_number'] = estimate.estimate?.data?.['estimate_number'];
+        }
       } catch (err) {
         result['status'] = 'error';
         result['error'] = messageOf(err);
