@@ -1,7 +1,7 @@
 {
   "name": "housecallpro",
   "displayName": "Housecall Pro",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Read Housecall Pro estimates from the customer link your contractor sent you, and decline options — via MCP",
   "author": {
     "name": "Chris Chall"
