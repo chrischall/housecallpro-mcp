@@ -25,8 +25,10 @@ egress:
     # Only hosts the SERVER process actually fetches. Hosts that appear
     # solely in a URL this server BUILDS and returns are excluded.
     #
-    # client.housecallpro.com and pro.housecallpro.com are deliberately NOT
-    # here. The former is sent as an `origin:`/`referer:` request HEADER on
-    # calls to app.housecallpro.com; the latter is a short-link prefix parsed
-    # out of a user-supplied link. Neither is ever fetched.
+    # pro.housecallpro.com IS fetched: client.ts resolves a short link by
+    # requesting it with `redirect: 'manual'` and reading the Location.
+    #
+    # client.housecallpro.com is NOT here — it is only sent as an
+    # `origin:`/`referer:` request HEADER on calls to app.housecallpro.com.
     - app.housecallpro.com
+    - pro.housecallpro.com
