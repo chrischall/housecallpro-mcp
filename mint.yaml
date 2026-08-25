@@ -1,0 +1,34 @@
+version: 1
+name: Housecall Pro
+slug: housecallpro
+summary: >-
+  Read estimates a Housecall Pro contractor sent you, and decline options
+  you don't want.
+env:
+  - name: HOUSECALLPRO_LINK
+    secret: true
+    required: false
+    help: >-
+      Estimate or invoice link your contractor sent you.
+  - name: HOUSECALLPRO_LINKS
+    required: false
+    help: >-
+      A JSON array of customer links for several documents at once. Use
+      HOUSECALLPRO_LINK instead for a single estimate/invoice link.
+  - name: HOUSECALLPRO_LINK_LABEL
+    required: false
+    help: >-
+      Label for the single link given by HOUSECALLPRO_LINK (defaults to
+      "default").
+egress:
+  allow:
+    # Only hosts the SERVER process actually fetches. Hosts that appear
+    # solely in a URL this server BUILDS and returns are excluded.
+    #
+    # pro.housecallpro.com IS fetched: client.ts resolves a short link by
+    # requesting it with `redirect: 'manual'` and reading the Location.
+    #
+    # client.housecallpro.com is NOT here — it is only sent as an
+    # `origin:`/`referer:` request HEADER on calls to app.housecallpro.com.
+    - app.housecallpro.com
+    - pro.housecallpro.com
