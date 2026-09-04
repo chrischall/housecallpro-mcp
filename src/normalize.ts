@@ -3,13 +3,32 @@
  *
  * The upstream response is ~4.8 KB of JSON:API-flavoured nesting, most of it
  * presentation flags (`show_service_quantity`, `layout`, `feature_flags`). This
- * keeps the fields that decide something and drops the rest — the full document
- * stays reachable through `housecallpro_get_estimate` with `raw: true`.
+ * keeps the fields that decide something and drops the rest — the whole document
+ * stays reachable through `housecallpro_get_estimate` with `view: 'raw'`.
  *
  * Every accessor tolerates a missing wrapper. This is an undocumented API and
  * it will drift; a summary that degrades beats one that throws.
  */
+import { projectOrRaw, type View } from '@chrischall/mcp-utils';
 import type { EstimateResponse, InvoiceResponse } from './client.js';
+
+const LABEL = 'housecallpro-mcp';
+
+/**
+ * The rungs the document reads honour — the fleet's `view` vocabulary
+ * (`@chrischall/mcp-utils` `src/response/view.ts`; `chrischall/workflows`
+ * `docs/fleet-conventions.md`, "Response shape").
+ *
+ * `compact` is `summarizeEstimate` / `summarizeInvoice`; `raw` is the upstream
+ * document, unprojected.
+ *
+ * There is deliberately **no `full`**. The fields this server understands are
+ * exactly the ones the summary names — there is no wider set it could return
+ * "nothing dropped" — so `full` would be `compact` under a second name, and
+ * everything past it is the upstream document, which is `raw`. A schema must
+ * never advertise a rung that silently aliases another.
+ */
+export const HCP_VIEWS = ['compact', 'raw'] as const;
 
 export interface EstimateLineItem {
   name?: string;
@@ -250,4 +269,32 @@ export function summarizeInvoice(raw: InvoiceResponse): InvoiceSummary {
       organization_id: str(company['organization_uuid']),
     },
   };
+}
+
+/**
+ * The estimate document at `view`.
+ *
+ * `projectOrRaw` rather than a bare call, because compact is the DEFAULT on a
+ * reverse-engineered API: if the upstream shape drifts far enough that the
+ * projection loses its footing, the whole document goes back (with a line on
+ * stderr) instead of an empty summary — which a caller cannot tell apart from
+ * an estimate that has nothing on it.
+ */
+export function viewEstimate(view: View, raw: EstimateResponse): EstimateResponse | EstimateSummary {
+  return view === 'raw'
+    ? raw
+    : projectOrRaw(raw, summarizeEstimate, {
+        label: LABEL,
+        context: 'GET /alpha/customer_estimates/{token}',
+      });
+}
+
+/** The invoice document at `view`. Same contract as {@link viewEstimate}. */
+export function viewInvoice(view: View, raw: InvoiceResponse): InvoiceResponse | InvoiceSummary {
+  return view === 'raw'
+    ? raw
+    : projectOrRaw(raw, summarizeInvoice, {
+        label: LABEL,
+        context: 'GET /api/invoices/consumer/v1/invoices/{token}',
+      });
 }

@@ -139,7 +139,7 @@ describe('tool error paths', () => {
   it('returns the raw document when asked', async () => {
     const h = await harness(okEstimate as unknown as typeof fetch);
     const out = parseToolResult<Record<string, unknown>>(
-      await h.callTool('housecallpro_get_estimate', { raw: true }),
+      await h.callTool('housecallpro_get_estimate', { view: 'raw' }),
     );
     // The raw envelope keeps its wrappers; the summary would have flattened them.
     expect(out['options']).toHaveProperty('data');
@@ -196,7 +196,7 @@ describe('remaining branches', () => {
     expect(JSON.stringify(res)).toMatch(/reCAPTCHA/i);
   });
 
-  it('summarises by default when raw is explicitly false', async () => {
+  it('summarises when compact is named explicitly', async () => {
     const client = clientFor(
       (() =>
         Promise.resolve(
@@ -208,7 +208,7 @@ describe('remaining branches', () => {
     );
     const h = await createTestHarness((server) => registerEstimateTools(server, client));
     const out = parseToolResult<Record<string, unknown>>(
-      await h.callTool('housecallpro_get_estimate', { raw: false }),
+      await h.callTool('housecallpro_get_estimate', { view: 'compact' }),
     );
     expect(out['estimate_number']).toBe('9');
   });

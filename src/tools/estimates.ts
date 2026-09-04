@@ -5,11 +5,18 @@
  * `confirm: true` it makes no network call and returns a preview of exactly
  * what would be sent.
  */
-import { minifiedResult, schemaConfirm, toolAnnotations } from '@chrischall/mcp-utils';
+import {
+  minifiedResult,
+  resolveView,
+  schemaConfirm,
+  toolAnnotations,
+  viewParam,
+  viewResult,
+} from '@chrischall/mcp-utils';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { HousecallProClient } from '../client.js';
-import { summarizeEstimate, summarizeInvoice } from '../normalize.js';
+import { HCP_VIEWS, summarizeEstimate, viewEstimate, viewInvoice } from '../normalize.js';
 
 const linkArg = z
   .string()
@@ -22,6 +29,31 @@ const linkArg = z
       'HOUSECALLPRO_LINKS. Omit only when exactly one link is configured.',
   );
 
+/**
+ * The `view` parameter, per document kind.
+ *
+ * Two rungs, not three — see `HCP_VIEWS`. The note is where each tool says what
+ * ITS compact rung leaves out; the generic blurb only says that a projection
+ * happened. Money gets a sentence of its own because the rungs disagree about
+ * it: compact emits `*_cents` AND `*_usd`, while raw is the upstream document,
+ * whose money is integer cents with no dollar sibling at all.
+ */
+const estimateViewArg = viewParam(HCP_VIEWS, {
+  note:
+    '"compact" is the summary: line items, totals, tax, company and approval state, with ' +
+    'every money field as both `*_cents` and `*_usd`. "raw" is the upstream document ' +
+    '(~4.8 KB, mostly display flags and `{object, data}` wrappers) — its money is integer ' +
+    'CENTS with no dollar sibling, so `total_amount: 34639` means $346.39.',
+});
+
+const invoiceViewArg = viewParam(HCP_VIEWS, {
+  note:
+    '"compact" is the summary: totals, balance due, payability and the company, with every ' +
+    'money field as both `*_cents` and `*_usd`, plus the `tax_cents`/`tax_usd` and `is_paid` ' +
+    'this server derives. "raw" is the upstream document — it carries neither, and its ' +
+    'money is integer CENTS with no dollar sibling.',
+});
+
 export function registerEstimateTools(server: McpServer, client: HousecallProClient): void {
   server.registerTool(
     'housecallpro_get_estimate',
@@ -29,23 +61,21 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
       description:
         'Read an estimate a Housecall Pro contractor sent you: line items, totals, tax, ' +
         'the company behind it, and whether it is still awaiting your approval. ' +
-        'Money is returned both as integer cents (`*_cents`, verbatim from the API) and ' +
-        'as dollars (`*_usd`).',
+        'The default `compact` view returns money both as integer cents (`*_cents`, ' +
+        'verbatim from the API) and as dollars (`*_usd`); `view: "raw"` returns the ' +
+        'upstream document, whose money is cents only.',
       annotations: toolAnnotations({ title: 'Get estimate', openWorld: true }),
       inputSchema: {
         link: linkArg,
-        raw: z
-          .boolean()
-          .optional()
-          .describe(
-            'Return the full upstream document instead of the summary. Much larger, and ' +
-              'mostly display flags.',
-          ),
+        view: estimateViewArg,
       },
     },
-    async ({ link, raw }) => {
-      const estimate = await client.getEstimate(link);
-      return minifiedResult(raw ? estimate : summarizeEstimate(estimate));
+    // `view` is destructured OUT here, and only `link` reaches the client. A
+    // handler written as `async (args) => client.getEstimate(args)` would put
+    // `view=compact` on the wire as a query parameter.
+    async ({ link, view }) => {
+      const rung = resolveView(view, HCP_VIEWS);
+      return viewResult(rung, viewEstimate(rung, await client.getEstimate(link)));
     },
   );
 
@@ -54,21 +84,18 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
     {
       description:
         'Read an invoice a Housecall Pro contractor sent you: amount, subtotal, tax, what ' +
-        'is still owed, and whether it can be paid online. Money is returned both as ' +
-        'integer cents (`*_cents`) and dollars (`*_usd`). Note this document carries no ' +
-        'line items — the portal shows a summary only.',
+        'is still owed, and whether it can be paid online. The default `compact` view ' +
+        'returns money both as integer cents (`*_cents`) and dollars (`*_usd`). Note this ' +
+        'document carries no line items — the portal shows a summary only.',
       annotations: toolAnnotations({ title: 'Get invoice', openWorld: true }),
       inputSchema: {
         link: linkArg,
-        raw: z
-          .boolean()
-          .optional()
-          .describe('Return the full upstream document instead of the summary.'),
+        view: invoiceViewArg,
       },
     },
-    async ({ link, raw }) => {
-      const invoice = await client.getInvoice(link);
-      return minifiedResult(raw ? invoice : summarizeInvoice(invoice));
+    async ({ link, view }) => {
+      const rung = resolveView(view, HCP_VIEWS);
+      return viewResult(rung, viewInvoice(rung, await client.getInvoice(link)));
     },
   );
 
