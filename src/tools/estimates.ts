@@ -5,7 +5,7 @@
  * `confirm: true` it makes no network call and returns a preview of exactly
  * what would be sent.
  */
-import { schemaConfirm, textResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { minifiedResult, schemaConfirm, toolAnnotations } from '@chrischall/mcp-utils';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { HousecallProClient } from '../client.js';
@@ -45,7 +45,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
     },
     async ({ link, raw }) => {
       const estimate = await client.getEstimate(link);
-      return textResult(raw ? estimate : summarizeEstimate(estimate));
+      return minifiedResult(raw ? estimate : summarizeEstimate(estimate));
     },
   );
 
@@ -68,7 +68,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
     },
     async ({ link, raw }) => {
       const invoice = await client.getInvoice(link);
-      return textResult(raw ? invoice : summarizeInvoice(invoice));
+      return minifiedResult(raw ? invoice : summarizeInvoice(invoice));
     },
   );
 
@@ -81,7 +81,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
       annotations: toolAnnotations({ readOnly: true }),
       inputSchema: {},
     },
-    async () => textResult({ links: client.links.list() }),
+    async () => minifiedResult({ links: client.links.list() }),
   );
 
   server.registerTool(
@@ -97,7 +97,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
           .describe('Organization UUID, from an estimate\'s `organization_id` field.'),
       },
     },
-    async ({ organization_id }) => textResult(await client.getOrganization(organization_id)),
+    async ({ organization_id }) => minifiedResult(await client.getOrganization(organization_id)),
   );
 
   server.registerTool(
@@ -119,7 +119,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
     },
     async ({ link, option_ids, confirm }) => {
       if (!confirm) {
-        return textResult({
+        return minifiedResult({
           dry_run: true,
           would_send: {
             method: 'POST',
@@ -138,7 +138,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
       const after = summarizeEstimate(await client.getEstimate(link));
       const touched = after.options.filter((o) => o.id && option_ids.includes(o.id));
 
-      return textResult({
+      return minifiedResult({
         declined: option_ids,
         verified_from_reread: touched.map((o) => ({
           id: o.id,
