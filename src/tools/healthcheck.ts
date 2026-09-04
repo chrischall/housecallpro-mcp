@@ -1,5 +1,5 @@
 /** Liveness: is the consumer API reachable, and is a link configured and usable? */
-import { messageOf, textResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { messageOf, minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { HousecallProClient } from '../client.js';
 import { VERSION } from '../version.js';
@@ -39,7 +39,7 @@ export function registerHealthcheckTools(server: McpServer, client: HousecallPro
           problem === 'invalid'
             ? 'Fix or remove HOUSECALLPRO_LINK; you can also just pass a link to each tool.'
             : 'Pass a link to each tool, or set HOUSECALLPRO_LINKS to save some by label.';
-        return textResult(result);
+        return minifiedResult(result);
       }
 
       try {
@@ -60,7 +60,7 @@ export function registerHealthcheckTools(server: McpServer, client: HousecallPro
         result['status'] = 'error';
         result['error'] = messageOf(err);
       }
-      return textResult(result);
+      return minifiedResult(result);
     },
   );
 }
