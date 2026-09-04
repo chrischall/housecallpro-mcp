@@ -212,7 +212,7 @@ describe('housecallpro_get_invoice', () => {
   it('returns the raw document when asked', async () => {
     const h = await harness(fixture());
     const out = parseToolResult<Record<string, unknown>>(
-      await h.callTool('housecallpro_get_invoice', { raw: true }),
+      await h.callTool('housecallpro_get_invoice', { view: 'raw' }),
     );
     expect(out['object']).toBe('consumer_invoice');
     expect(out['amount']).toBe(37888);

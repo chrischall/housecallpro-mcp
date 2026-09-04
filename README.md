@@ -76,6 +76,28 @@ need it.
 | `housecallpro_approve_estimate` | Always refuses; explains why |
 | `housecallpro_healthcheck` | Reachability + whether a link still resolves |
 
+### Response shape (`view`)
+
+`housecallpro_get_estimate` and `housecallpro_get_invoice` take
+`view: 'compact' | 'raw'`, **defaulting to `compact`** — the fleet vocabulary
+from [`@chrischall/mcp-utils`](https://github.com/chrischall/mcp-utils).
+
+| rung | what you get |
+| --- | --- |
+| `compact` *(default)* | the summary: line items, totals, tax, company, approval state — with money as both `*_cents` and `*_usd` |
+| `raw` | the upstream document verbatim (~4.8 KB for an estimate), `{object, data}` wrappers and display flags included |
+
+There is deliberately **no `full`** rung. `full` means "every field this server
+understands, nothing dropped", and the fields this server understands are
+exactly the ones the summary names — so it would be `compact` under a second
+name, and everything past it is the upstream document, which is `raw`. A schema
+should never advertise a value that silently aliases another.
+
+If the upstream shape drifts far enough that the projection loses its footing,
+the whole document is returned (with a warning on stderr) rather than an empty
+summary: an empty summary is indistinguishable from an estimate with nothing on
+it.
+
 ### Estimates and invoices are different documents
 
 They use different token shapes — 129 characters for an estimate, 32 for an
@@ -95,6 +117,11 @@ The upstream API returns **integer cents** — the estimate the portal renders a
 figure 100×, so each money field is emitted as both `*_cents` (verbatim) and
 `*_usd` (derived). `tax.rate` is a fraction (`0.0825` = 8.25%) and is never
 scaled.
+
+That pairing is what the projection is *for*, so it exists on `compact` only.
+`view: 'raw'` is the upstream document, and its money is integer cents with no
+dollar sibling — `total_amount: 34639` is $346.39. The `view` parameter's own
+description says so at the call site.
 
 ### Why you can't approve an estimate
 
