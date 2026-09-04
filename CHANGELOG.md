@@ -5,7 +5,7 @@
 
 ### Features
 
-* **tools:** compact by default — strip media URLs, and minify every response ([#35](https://github.com/chrischall/housecallpro-mcp/issues/35)) ([091ee43](https://github.com/chrischall/housecallpro-mcp/commit/091ee43951cefee4d683179f0c2a32f666d69e41))
+* **tools:** minify every response — no formatting whitespace on any payload ([#35](https://github.com/chrischall/housecallpro-mcp/issues/35)) ([091ee43](https://github.com/chrischall/housecallpro-mcp/commit/091ee43951cefee4d683179f0c2a32f666d69e41))
 * **tools:** replace the boolean `raw` with the fleet `view` vocabulary ([#39](https://github.com/chrischall/housecallpro-mcp/issues/39)) ([0d31f1d](https://github.com/chrischall/housecallpro-mcp/commit/0d31f1dc8e4935521db1b1b563c5da58e166494d))
 
 ## [0.2.0](https://github.com/chrischall/housecallpro-mcp/compare/v0.1.0...v0.2.0) (2026-08-15)
