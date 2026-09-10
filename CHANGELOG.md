@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1](https://github.com/chrischall/housecallpro-mcp/compare/v0.3.0...v0.3.1) (2026-09-10)
+
+
+### Bug Fixes
+
+* **deps:** @chrischall/mcp-utils 0.26.1 ([#49](https://github.com/chrischall/housecallpro-mcp/issues/49)) ([045363a](https://github.com/chrischall/housecallpro-mcp/commit/045363a1934992009a7e7e357b17da011df6311b))
+* **deps:** Bump hono from 4.13.2 to 4.13.7 ([#47](https://github.com/chrischall/housecallpro-mcp/issues/47)) ([7f1b1b2](https://github.com/chrischall/housecallpro-mcp/commit/7f1b1b2cc1175e099b97bacd85b331064f5c7407))
+* **deps:** declare the peer floors mcp-utils 0.26.1 requires ([#50](https://github.com/chrischall/housecallpro-mcp/issues/50)) ([e943072](https://github.com/chrischall/housecallpro-mcp/commit/e9430725015916d0ba161732c53ab8399cdb112a))
+
 ## [0.3.0](https://github.com/chrischall/housecallpro-mcp/compare/v0.2.0...v0.3.0) (2026-09-04)
 
 
