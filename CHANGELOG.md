@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.0](https://github.com/chrischall/housecallpro-mcp/compare/v0.3.1...v0.4.0) (2026-09-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **mcp:** migrate server to SDK v2 ([#53](https://github.com/chrischall/housecallpro-mcp/issues/53))
+
+### Features
+
+* **mcp:** migrate server to SDK v2 ([#53](https://github.com/chrischall/housecallpro-mcp/issues/53)) ([2b60941](https://github.com/chrischall/housecallpro-mcp/commit/2b609415b956d09b93fb54df9eb160bc3b1e4789))
+
+
+### Bug Fixes
+
+* **mcp:** restore repository source style ([#56](https://github.com/chrischall/housecallpro-mcp/issues/56)) ([8e01cf3](https://github.com/chrischall/housecallpro-mcp/commit/8e01cf392b247f98662b750f5b5f01c101223fef)), closes [#54](https://github.com/chrischall/housecallpro-mcp/issues/54)
+
 ## [0.3.1](https://github.com/chrischall/housecallpro-mcp/compare/v0.3.0...v0.3.1) (2026-09-10)
 
 
