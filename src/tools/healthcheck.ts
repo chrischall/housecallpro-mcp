@@ -1,25 +1,33 @@
 /** Liveness: is the consumer API reachable, and is a link configured and usable? */
-import { messageOf, minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { HousecallProClient } from '../client.js';
-import { VERSION } from '../version.js';
+import {
+  messageOf,
+  minifiedResult,
+  toolAnnotations,
+} from "@chrischall/mcp-utils";
+import type { McpServer } from "@modelcontextprotocol/server";
+import type { HousecallProClient } from "../client.js";
+import { VERSION } from "../version.js";
+import { z } from "zod";
 
-export function registerHealthcheckTools(server: McpServer, client: HousecallProClient): void {
+export function registerHealthcheckTools(
+  server: McpServer,
+  client: HousecallProClient,
+): void {
   server.registerTool(
-    'housecallpro_healthcheck',
+    "housecallpro_healthcheck",
     {
       description:
-        'Check that this server can reach Housecall Pro and that a configured customer ' +
-        'link still resolves. Run this first when a tool fails.',
-      annotations: toolAnnotations({ title: 'Healthcheck', openWorld: true }),
-      inputSchema: {},
+        "Check that this server can reach Housecall Pro and that a configured customer " +
+        "link still resolves. Run this first when a tool fails.",
+      annotations: toolAnnotations({ title: "Healthcheck", openWorld: true }),
+      inputSchema: z.object({}),
     },
     async () => {
       const links = client.links.list();
       const result: Record<string, unknown> = {
         version: VERSION,
-        transport: 'direct https (no browser bridge required)',
-        api_origin: 'https://app.housecallpro.com',
+        transport: "direct https (no browser bridge required)",
+        api_origin: "https://app.housecallpro.com",
         links_configured: links.length,
         links,
       };
@@ -33,12 +41,13 @@ export function registerHealthcheckTools(server: McpServer, client: HousecallPro
         // disposable link per document, so most callers paste one per call
         // rather than setting an environment variable. Only a link that failed
         // to PARSE is actually wrong.
-        result['status'] = problem === 'invalid' ? 'bad_link' : 'ok_no_link_configured';
-        if (problem === 'invalid') result['error'] = client.links.problemDetail;
-        result['hint'] =
-          problem === 'invalid'
-            ? 'Fix or remove HOUSECALLPRO_LINK; you can also just pass a link to each tool.'
-            : 'Pass a link to each tool, or set HOUSECALLPRO_LINKS to save some by label.';
+        result["status"] =
+          problem === "invalid" ? "bad_link" : "ok_no_link_configured";
+        if (problem === "invalid") result["error"] = client.links.problemDetail;
+        result["hint"] =
+          problem === "invalid"
+            ? "Fix or remove HOUSECALLPRO_LINK; you can also just pass a link to each tool."
+            : "Pass a link to each tool, or set HOUSECALLPRO_LINKS to save some by label.";
         return minifiedResult(result);
       }
 
@@ -49,16 +58,17 @@ export function registerHealthcheckTools(server: McpServer, client: HousecallPro
         // request, so it did not verify reachability either.
         if (await client.isInvoiceLink()) {
           const invoice = await client.getInvoice();
-          result['status'] = 'ok';
-          result['invoice_number'] = invoice['invoice_number'];
+          result["status"] = "ok";
+          result["invoice_number"] = invoice["invoice_number"];
         } else {
           const estimate = await client.getEstimate();
-          result['status'] = 'ok';
-          result['estimate_number'] = estimate.estimate?.data?.['estimate_number'];
+          result["status"] = "ok";
+          result["estimate_number"] =
+            estimate.estimate?.data?.["estimate_number"];
         }
       } catch (err) {
-        result['status'] = 'error';
-        result['error'] = messageOf(err);
+        result["status"] = "error";
+        result["error"] = messageOf(err);
       }
       return minifiedResult(result);
     },
