@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.0](https://github.com/chrischall/housecallpro-mcp/compare/v0.4.0...v1.0.0) (2026-09-20)
+
+
+### Features
+
+* **deps:** take mcp-utils 1.0.0, fixing server/discover ([#59](https://github.com/chrischall/housecallpro-mcp/issues/59)) ([dd811df](https://github.com/chrischall/housecallpro-mcp/commit/dd811df13907be14df2d672b80167a8d65cc55be))
+
+
+### Bug Fixes
+
+* **release:** drop bump-minor-pre-major so a breaking change cuts a major ([#61](https://github.com/chrischall/housecallpro-mcp/issues/61)) ([87d41dc](https://github.com/chrischall/housecallpro-mcp/commit/87d41dc92da97e9335a078dfae54101eef34e3f8))
+* **release:** restate the Release-As footer the squash dropped ([#62](https://github.com/chrischall/housecallpro-mcp/issues/62)) ([25156ba](https://github.com/chrischall/housecallpro-mcp/commit/25156ba2fe456674dd9c26a173ef900d93090434))
+
 ## [0.4.0](https://github.com/chrischall/housecallpro-mcp/compare/v0.3.1...v0.4.0) (2026-09-17)
 
 
