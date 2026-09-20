@@ -83,7 +83,6 @@
         },
         "src/version.ts"
       ],
-      "bump-minor-pre-major": true,
       "initial-version": "0.1.0",
       "include-component-in-tag": false
     }
