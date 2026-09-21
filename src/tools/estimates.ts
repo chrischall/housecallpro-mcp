@@ -138,6 +138,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
         title: 'Decline estimate',
         readOnly: false,
         openWorld: true,
+        destructive: true,
       }),
       inputSchema: z.object({
         link: linkArg,
