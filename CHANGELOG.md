@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/chrischall/housecallpro-mcp/compare/v1.0.0...v1.0.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* **tools:** say that declining an estimate is destructive ([#63](https://github.com/chrischall/housecallpro-mcp/issues/63)) ([0b9517b](https://github.com/chrischall/housecallpro-mcp/commit/0b9517b15f13a3577c198ce5e1fe108b3e21fb19))
+
 ## [1.0.0](https://github.com/chrischall/housecallpro-mcp/compare/v0.4.0...v1.0.0) (2026-09-20)
 
 
