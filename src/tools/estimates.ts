@@ -6,6 +6,7 @@
  * what would be sent.
  */
 import {
+  McpToolError,
   minifiedResult,
   resolveView,
   schemaConfirm,
@@ -16,7 +17,18 @@ import {
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { HousecallProClient } from '../client.js';
-import { HCP_VIEWS, summarizeEstimate, viewEstimate, viewInvoice } from '../normalize.js';
+import {
+  type EstimateOptionSummary,
+  HCP_VIEWS,
+  summarizeEstimate,
+  viewEstimate,
+  viewInvoice,
+} from '../normalize.js';
+
+/** Declined, or approved (an approval date is set): no longer open to decline. */
+function isDecided(o: EstimateOptionSummary): boolean {
+  return o.status === 'Declined' || o.approval_date != null;
+}
 
 const linkArg = z
   .string()
@@ -163,20 +175,59 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
         });
       }
 
+      // Check the ids against the estimate BEFORE the irreversible write: an id
+      // from another estimate, or an option already decided, must not be posted
+      // and then reported back as "declined".
+      const before = summarizeEstimate(await client.getEstimate(link));
+      const byId = new Map(before.options.filter((o) => o.id).map((o) => [o.id!, o]));
+      const unknown = option_ids.filter((id) => !byId.has(id));
+      const decided = option_ids
+        .map((id) => byId.get(id))
+        .filter((o): o is EstimateOptionSummary => o !== undefined && isDecided(o));
+      if (unknown.length > 0 || decided.length > 0) {
+        const problems: string[] = [];
+        if (unknown.length > 0) {
+          problems.push(
+            `not options on this estimate: ${unknown.join(', ')} ` +
+              '(read it with housecallpro_get_estimate for its `options[].id`)',
+          );
+        }
+        if (decided.length > 0) {
+          problems.push(
+            `already decided: ${decided.map((o) => `${o.id} (${o.status ?? 'approved'})`).join(', ')}`,
+          );
+        }
+        throw new McpToolError(`Nothing was declined — ${problems.join('; ')}.`);
+      }
+
       await client.declineOptions(option_ids, link);
 
-      // A 2xx is not proof. Re-read and report the option's real state so a
-      // silently-ignored write cannot be reported as success.
+      // A 2xx is not proof. Re-read, and call an option declined only when the
+      // re-read says so, so a silently-ignored write cannot be reported as success.
       const after = summarizeEstimate(await client.getEstimate(link));
       const touched = after.options.filter((o) => o.id && option_ids.includes(o.id));
+      const reread = touched.map((o) => ({ id: o.id, status: o.status, approval_date: o.approval_date }));
+      const confirmed = option_ids.filter((id) => touched.some((o) => o.id === id && o.status === 'Declined'));
+      const notConfirmed = option_ids
+        .filter((id) => !confirmed.includes(id))
+        .map((id) => reread.find((o) => o.id === id) ?? { id, status: 'missing from re-read', approval_date: null });
+
+      if (confirmed.length === 0) {
+        throw new McpToolError(
+          'The decline request was accepted, but re-reading the estimate shows none of these ' +
+            `options declined: ${JSON.stringify(notConfirmed)}. ` +
+            'Do not tell the user they were declined; check the estimate in a browser.',
+        );
+      }
 
       return minifiedResult({
-        declined: option_ids,
-        verified_from_reread: touched.map((o) => ({
-          id: o.id,
-          status: o.status,
-          approval_date: o.approval_date,
-        })),
+        declined: confirmed,
+        ...(notConfirmed.length > 0 && {
+          not_confirmed: notConfirmed,
+          warning:
+            'The re-read does not show these options as declined. Do not report them as declined.',
+        }),
+        verified_from_reread: reread,
         awaiting_approval: after.awaiting_approval,
       });
     },
