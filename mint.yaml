@@ -11,6 +11,7 @@ env:
     help: >-
       Estimate or invoice link your contractor sent you.
   - name: HOUSECALLPRO_LINKS
+    secret: true
     required: false
     help: >-
       A JSON array of customer links for several documents at once. Use
