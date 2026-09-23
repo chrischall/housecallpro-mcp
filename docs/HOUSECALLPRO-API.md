@@ -187,6 +187,14 @@ estimate_option_uuids: [<option id>, …]      // options.data[].id, e.g. est_�
 
 No captcha token is involved — the SPA's decline path sends nothing else.
 
+Because this shape has never been issued live, `housecallpro_decline_estimate`
+does not trust the `2xx`. It reads the estimate first and refuses ids that are
+not its options or are already declined/approved, then re-reads after the POST
+and reports as `declined` only the options whose `status` is now `Declined`.
+Anything else comes back under `not_confirmed` (or, if nothing landed, as a tool
+error). Promote this entry to verified only after a live decline is observed
+to flip `status`.
+
 ### `POST /api/estimates/estimate_options/customer_approvals` — shape-only, and blocked
 
 ```

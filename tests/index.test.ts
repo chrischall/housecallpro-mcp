@@ -57,22 +57,113 @@ describe('housecallpro_decline_estimate', () => {
     expect(calls).toBe(0);
   });
 
-  it('declines and reports the state read back afterwards', async () => {
-    const declined = structuredClone(ESTIMATE);
-    (declined.options.data[0] as Record<string, unknown>)['status'] = 'Declined';
-    let n = 0;
-    const fetchImpl = (() => {
-      n++;
-      return json(n === 1 ? { ok: true } : declined)();
+  /**
+   * A fetch that serves the estimate for GETs and `{ ok: true }` for the
+   * decline POST, recording every call. `afterPost` is the estimate the
+   * re-read sees once the POST has been made.
+   */
+  function scripted(before: unknown, afterPost: unknown) {
+    const calls: Array<{ method: string; url: string }> = [];
+    let posted = false;
+    const fetchImpl = ((url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      calls.push({ method, url: String(url) });
+      if (method === 'POST') {
+        posted = true;
+        return json({ ok: true })();
+      }
+      return json(posted ? afterPost : before)();
     }) as unknown as typeof fetch;
+    return { fetchImpl, calls, posts: () => calls.filter((c) => c.method === 'POST').length };
+  }
 
-    const h = await harnessWith(fetchImpl);
+  function withOptions(...options: Array<Record<string, unknown>>) {
+    const e = structuredClone(ESTIMATE);
+    e.options.data = options.map((o) => ({ object: 'option', status: 'Awaiting Approval', approval_date: null, ...o })) as typeof e.options.data;
+    return e;
+  }
+
+  it('declines and reports the state read back afterwards', async () => {
+    const declined = withOptions({ id: 'est_1', status: 'Declined' });
+    const s = scripted(ESTIMATE, declined);
+
+    const h = await harnessWith(s.fetchImpl);
     const out = parseToolResult(
       await h.callTool('housecallpro_decline_estimate', { option_ids: ['est_1'], confirm: true }),
     );
 
+    expect(s.posts()).toBe(1);
+    expect(out.declined).toEqual(['est_1']);
+    expect(out.not_confirmed).toBeUndefined();
     expect(out.verified_from_reread).toEqual([{ id: 'est_1', status: 'Declined', approval_date: null }]);
     expect(out.awaiting_approval).toBe(false);
+  });
+
+  it('refuses ids that are not options on this estimate, before sending anything', async () => {
+    const s = scripted(ESTIMATE, ESTIMATE);
+    const h = await harnessWith(s.fetchImpl);
+
+    const res = await h.callTool('housecallpro_decline_estimate', { option_ids: ['est_1', 'est_other'], confirm: true });
+
+    expect(res.isError).toBe(true);
+    expect(JSON.stringify(res)).toMatch(/est_other/);
+    expect(s.posts()).toBe(0);
+  });
+
+  it('refuses options that are already declined or approved, before sending anything', async () => {
+    const before = withOptions(
+      { id: 'est_1' },
+      { id: 'est_2', status: 'Declined' },
+      // Approved options carry an approval date; the status may be absent.
+      { id: 'est_3', status: undefined, approval_date: '2026-09-01T00:00:00Z' },
+    );
+    const s = scripted(before, before);
+    const h = await harnessWith(s.fetchImpl);
+
+    const res = await h.callTool('housecallpro_decline_estimate', {
+      option_ids: ['est_1', 'est_2', 'est_3'],
+      confirm: true,
+    });
+
+    expect(res.isError).toBe(true);
+    const text = JSON.stringify(res);
+    expect(text).toMatch(/est_2 \(Declined\)/);
+    expect(text).toMatch(/est_3 \(approved\)/);
+    expect(s.posts()).toBe(0);
+  });
+
+  it('reports an error, not success, when the re-read shows nothing was declined', async () => {
+    // The upstream answered 2xx but ignored the body: the option is still open.
+    const s = scripted(ESTIMATE, ESTIMATE);
+    const h = await harnessWith(s.fetchImpl);
+
+    const res = await h.callTool('housecallpro_decline_estimate', { option_ids: ['est_1'], confirm: true });
+
+    expect(s.posts()).toBe(1);
+    expect(res.isError).toBe(true);
+    const text = JSON.stringify(res);
+    expect(text).toMatch(/est_1/);
+    expect(text).toMatch(/Awaiting Approval/);
+    expect(text).not.toMatch(/"declined":\["est_1"\]/);
+  });
+
+  it('lists only the re-read-confirmed ids as declined when the write partly landed', async () => {
+    const before = withOptions({ id: 'est_1' }, { id: 'est_2' }, { id: 'est_3' });
+    // est_3 vanishes from the re-read entirely: that is not a confirmation either.
+    const after = withOptions({ id: 'est_1', status: 'Declined' }, { id: 'est_2' });
+    const s = scripted(before, after);
+    const h = await harnessWith(s.fetchImpl);
+
+    const out = parseToolResult(
+      await h.callTool('housecallpro_decline_estimate', { option_ids: ['est_1', 'est_2', 'est_3'], confirm: true }),
+    );
+
+    expect(out.declined).toEqual(['est_1']);
+    expect(out.not_confirmed).toEqual([
+      { id: 'est_2', status: 'Awaiting Approval', approval_date: null },
+      { id: 'est_3', status: 'missing from re-read', approval_date: null },
+    ]);
+    expect(out.warning).toMatch(/not report them as declined/i);
   });
 });
 
