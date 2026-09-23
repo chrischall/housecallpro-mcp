@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2](https://github.com/chrischall/housecallpro-mcp/compare/v1.0.1...v1.0.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **deps:** require zod ^4.6.5 to match @chrischall/mcp-utils 2.4.0 ([#67](https://github.com/chrischall/housecallpro-mcp/issues/67)) ([1b7ac0d](https://github.com/chrischall/housecallpro-mcp/commit/1b7ac0d726f83f98583ed5a97a3cd15ef5529016))
+* **deps:** upgrade @chrischall/mcp-utils to 2.4.0 and @fetchproxy/* to 3.2.0 ([#65](https://github.com/chrischall/housecallpro-mcp/issues/65)) ([1bc2837](https://github.com/chrischall/housecallpro-mcp/commit/1bc28377a901c382aae1a09bf64c9dc4f34db4a1))
+
 ## [1.0.1](https://github.com/chrischall/housecallpro-mcp/compare/v1.0.0...v1.0.1) (2026-09-21)
 
 
