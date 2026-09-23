@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/chrischall/housecallpro-mcp/compare/v1.0.2...v1.0.3) (2026-09-23)
+
+
+### Bug Fixes
+
+* **tools:** confirm estimate declines by re-read and mark HOUSECALLPRO_LINKS secret ([#68](https://github.com/chrischall/housecallpro-mcp/issues/68)) ([7183394](https://github.com/chrischall/housecallpro-mcp/commit/7183394c3caec7e023832a433296af50950cac09))
+
 ## [1.0.2](https://github.com/chrischall/housecallpro-mcp/compare/v1.0.1...v1.0.2) (2026-09-23)
 
 
