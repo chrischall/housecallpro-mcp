@@ -64,6 +64,20 @@ need it.
 > and, for an estimate, decline it. It is read from the environment, never logged, and never
 > returned in a tool result — `housecallpro_list_links` reports labels only.
 
+### Confirmations
+
+Declining asks you first. A client that can show a confirmation prompt (Claude
+Code) shows one. On a client that cannot (claude.ai, Claude Desktop) the first
+call declines nothing and returns a preview plus a `confirmToken`; only a repeat
+call with that token acts, and only if the estimate still matches what was
+previewed.
+
+| variable | default | |
+|---|---|---|
+| `MCP_CONFIRM_MODE` | `ask-user` | What a write does on a client that cannot show a confirmation prompt (claude.ai, Claude Desktop). `ask-user`: two steps — the first call does nothing and returns a preview plus a token, and the model must get your approval in chat before calling again with it. `auto`: the same two steps, but the model may use the token after reviewing the preview itself. `refuse`: writes are refused on such clients. A client that can show prompts (Claude Code) always gets the real prompt. An unrecognised value is treated as `refuse`. |
+| `MCP_CONFIRM_TTL_SECONDS` | `600` | How long a token stays valid. |
+| `MCP_CONFIRM_SECRET` | random per process | Signing key; set it only if tokens must survive a server restart. |
+
 ## Tools
 
 | Tool | |
@@ -72,7 +86,7 @@ need it.
 | `housecallpro_get_invoice` | Amount, subtotal, tax, balance due, payability |
 | `housecallpro_get_company` | The contractor: phone, email, website, arrival window |
 | `housecallpro_list_links` | Configured links, labels only |
-| `housecallpro_decline_estimate` | Decline options — confirm-gated |
+| `housecallpro_decline_estimate` | Decline options — asks you to confirm first |
 | `housecallpro_approve_estimate` | Always refuses; explains why |
 | `housecallpro_healthcheck` | Reachability + whether a link still resolves |
 
@@ -137,8 +151,9 @@ Rather than post a request that would be rejected — or worse, might *not* be,
 binding you to a quoted price — the tool refuses and tells you to approve in a
 browser.
 
-Declining is confirm-gated: without `confirm: true` it makes no network call and
-returns a preview of exactly what would be sent. After a real decline it
+Declining asks you to confirm first (see [Confirmations](#confirmations)): it
+reads the estimate, refuses ids that are not its options or are already decided,
+and shows exactly what would be sent before anything is posted. After a real decline it
 **re-reads the estimate** and reports the option's actual status, because a 2xx
 is not proof a write landed.
 
