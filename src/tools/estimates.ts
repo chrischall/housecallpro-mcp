@@ -1,15 +1,18 @@
 /**
  * Estimate tools.
  *
- * Reads are plain. The one mutation — decline — is confirm-gated: without
- * `confirm: true` it makes no network call and returns a preview of exactly
- * what would be sent.
+ * Reads are plain. The one mutation — decline — asks the user first: a
+ * confirmation prompt where the client supports one; otherwise the first call
+ * posts nothing and returns a preview plus a confirmToken, and only a repeat
+ * call with that token declines (see MCP_CONFIRM_MODE).
  */
 import {
+  confirmationFromEnv,
+  confirmTokenParam,
   McpToolError,
   minifiedResult,
+  requireConfirmationWithFallback,
   resolveView,
-  schemaConfirm,
   toolAnnotations,
   viewParam,
   viewResult,
@@ -143,9 +146,11 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
     'housecallpro_decline_estimate',
     {
       description:
-        'Decline one or more options on an estimate. Requires confirm:true — without it ' +
-        'this returns a dry-run preview and makes no network call. Declining tells the ' +
-        'contractor you are not proceeding; it cannot be undone from here.',
+        'Decline one or more options on an estimate. Asks the user to confirm first: a ' +
+        'confirmation prompt where the client supports one; otherwise the first call posts ' +
+        'nothing and returns a preview and a confirmToken, and only a repeat call with that ' +
+        'token proceeds (see MCP_CONFIRM_MODE). Declining tells the contractor you are not ' +
+        'proceeding; it cannot be undone from here.',
       annotations: toolAnnotations({
         title: 'Decline estimate',
         readOnly: false,
@@ -158,26 +163,15 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
           .array(z.string())
           .min(1)
           .describe('Estimate option ids to decline, from `options[].id` (e.g. `est_…`).'),
-        confirm: schemaConfirm,
+        confirmToken: confirmTokenParam,
       }),
     },
-    async ({ link, option_ids, confirm }) => {
-      if (!confirm) {
-        return minifiedResult({
-          dry_run: true,
-          would_send: {
-            method: 'POST',
-            path: '/api/estimates/estimate_options/customer_declines',
-            estimate_option_uuids: option_ids,
-          },
-          effect: 'Marks these estimate options as declined for the contractor.',
-          note: 'Re-run with confirm: true to actually decline.',
-        });
-      }
-
+    async ({ link, option_ids, confirmToken }, ctx) => {
       // Check the ids against the estimate BEFORE the irreversible write: an id
       // from another estimate, or an option already decided, must not be posted
-      // and then reported back as "declined".
+      // and then reported back as "declined". This read runs on every call, so
+      // the preview shows the options' current state and a token issued for one
+      // state is refused (DRAFT_CHANGED) once the estimate has moved.
       const before = summarizeEstimate(await client.getEstimate(link));
       const byId = new Map(before.options.filter((o) => o.id).map((o) => [o.id!, o]));
       const unknown = option_ids.filter((id) => !byId.has(id));
@@ -199,6 +193,45 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
         }
         throw new McpToolError(`Nothing was declined — ${problems.join('; ')}.`);
       }
+
+      const wouldSend = {
+        method: 'POST',
+        path: '/api/estimates/estimate_options/customer_declines',
+        estimate_option_uuids: option_ids,
+      };
+      const options = option_ids.map((id) => {
+        const o = byId.get(id)!;
+        return { id, status: o.status, approval_date: o.approval_date, total_amount_usd: o.total_amount_usd };
+      });
+      const gate = await requireConfirmationWithFallback(
+        ctx,
+        confirmationFromEnv({
+          action: 'estimate.decline',
+          message: 'Review and confirm declining these estimate options:',
+          details: { estimate_number: before.estimate_number, options },
+          tool: 'housecallpro_decline_estimate',
+          confirmToken,
+          subject: () => ({
+            // Never the link: the retrieval token is a bearer credential, and a
+            // confirm token's claims are readable. The estimate's identity and
+            // the options' current state are bound through the payload instead.
+            target: '',
+            payload: {
+              ...wouldSend,
+              estimate_uuid: before.estimate_uuid,
+              estimate_number: before.estimate_number,
+              options: option_ids.map((id) => byId.get(id)),
+            },
+            preview: {
+              would_send: wouldSend,
+              effect: 'Marks these estimate options as declined for the contractor.',
+              estimate_number: before.estimate_number,
+              options,
+            },
+          }),
+        }),
+      );
+      if (gate) return gate;
 
       await client.declineOptions(option_ids, link);
 
