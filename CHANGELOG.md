@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/chrischall/housecallpro-mcp/compare/v1.0.3...v1.1.0) (2026-09-24)
+
+
+### Features
+
+* confirm writes with a preview token instead of confirm: true ([#70](https://github.com/chrischall/housecallpro-mcp/issues/70)) ([ffb6ac8](https://github.com/chrischall/housecallpro-mcp/commit/ffb6ac880ed4d3d3c5fde69c64ce4e4284ac4873))
+
 ## [1.0.3](https://github.com/chrischall/housecallpro-mcp/compare/v1.0.2...v1.0.3) (2026-09-23)
 
 
