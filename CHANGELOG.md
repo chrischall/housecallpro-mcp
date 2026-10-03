@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.1](https://github.com/chrischall/housecallpro-mcp/compare/v1.1.0...v1.1.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **deps:** bump @chrischall/mcp-utils to 2.10.0 ([#77](https://github.com/chrischall/housecallpro-mcp/issues/77)) ([76bec3b](https://github.com/chrischall/housecallpro-mcp/commit/76bec3b93e6436d5f2afc40f7048ae68b1aaa3be))
+* **deps:** bump @chrischall/mcp-utils to 2.12.0 ([#79](https://github.com/chrischall/housecallpro-mcp/issues/79)) ([8674d55](https://github.com/chrischall/housecallpro-mcp/commit/8674d55ea56d6a095f494b1602bb20059e065137))
+* **deps:** bump @chrischall/mcp-utils to 2.13.0 ([#80](https://github.com/chrischall/housecallpro-mcp/issues/80)) ([4e4a33b](https://github.com/chrischall/housecallpro-mcp/commit/4e4a33b59fa08b6acd461a68d949190da6c2f9ca))
+* keep write approvals valid across a hosted restart (mcp-utils 2.11.0) ([#78](https://github.com/chrischall/housecallpro-mcp/issues/78)) ([25451a4](https://github.com/chrischall/housecallpro-mcp/commit/25451a41fca1e1b9f9d0283f90cd1c8c95a4af49))
+* report CDN/WAF blocks as edge_blocked, not a rejected credential (mcp-utils 2.9.0) ([#74](https://github.com/chrischall/housecallpro-mcp/issues/74)) ([56d9d69](https://github.com/chrischall/housecallpro-mcp/commit/56d9d6952151e9f3212ef2e3730c933091633dd8))
+
 ## [1.1.0](https://github.com/chrischall/housecallpro-mcp/compare/v1.0.3...v1.1.0) (2026-09-24)
 
 
