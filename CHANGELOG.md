@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/chrischall/housecallpro-mcp/compare/v1.1.1...v1.1.2) (2026-10-05)
+
+
+### Bug Fixes
+
+* **deps:** require @chrischall/mcp-utils 2.14.0 and MCP SDK 2.3.0 ([#83](https://github.com/chrischall/housecallpro-mcp/issues/83)) ([e920aa9](https://github.com/chrischall/housecallpro-mcp/commit/e920aa9609070ce89d6633ea4ab73899d0ba8d0b))
+
 ## [1.1.1](https://github.com/chrischall/housecallpro-mcp/compare/v1.1.0...v1.1.1) (2026-10-03)
 
 
