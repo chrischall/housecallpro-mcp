@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/chrischall/housecallpro-mcp/compare/v1.1.2...v1.2.0) (2026-10-07)
+
+
+### Features
+
+* **deps:** add MCP_CONFIRM_ELICITATION=off for clients that never show the confirm prompt ([#85](https://github.com/chrischall/housecallpro-mcp/issues/85)) ([46526c7](https://github.com/chrischall/housecallpro-mcp/commit/46526c7750deb2cbb72d2387543cde383b5f17f0))
+
+
+### Documentation
+
+* document MCP_CONFIRM_ELICITATION ([#87](https://github.com/chrischall/housecallpro-mcp/issues/87)) ([1047045](https://github.com/chrischall/housecallpro-mcp/commit/10470454aadd83548a094d5c36ddc788ce328fbd))
+
 ## [1.1.2](https://github.com/chrischall/housecallpro-mcp/compare/v1.1.1...v1.1.2) (2026-10-05)
 
 
