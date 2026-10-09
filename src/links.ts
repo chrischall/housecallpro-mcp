@@ -107,7 +107,7 @@ export function parseLink(input: string): ParsedLink {
 
     const shortKind = SHORT_KINDS[head];
     if (shortKind && segments.length >= 2) {
-      return { kind: shortKind, shortUrl: url.toString() };
+      return shortLink(shortKind, url);
     }
 
     if (RETRIEVAL_TOKEN_RE.test(tail)) {
@@ -117,7 +117,7 @@ export function parseLink(input: string): ParsedLink {
     // A housecallpro.com URL we don't recognise: treat the last segment as a
     // short code only when the route says which document it is.
     if (shortKind) {
-      return { kind: shortKind, shortUrl: url.toString() };
+      return shortLink(shortKind, url);
     }
   }
 
@@ -127,6 +127,25 @@ export function parseLink(input: string): ParsedLink {
       'client.housecallpro.com/estimates/… or /invoices/… link), or the retrieval ' +
       'token from the end of it — 129 characters for an estimate, 32 for an invoice.',
   );
+}
+
+/**
+ * A short pro link, pinned to `https://pro.housecallpro.com`.
+ *
+ * The short code alone resolves to the bearer retrieval token, so it must
+ * never travel in cleartext: an `http://` link is rebuilt on the https origin
+ * rather than stored as pasted. And short links are only issued on
+ * pro.housecallpro.com — the one host (beside the API) the server may reach —
+ * so any other subdomain or port is refused before anything is fetched.
+ */
+function shortLink(kind: LinkKind, url: URL): ParsedLink {
+  const origin = new URL(SHORT_ORIGIN);
+  if (url.hostname.toLowerCase() !== origin.hostname || url.port !== '') {
+    throw new Error(
+      `Refusing a short link on ${url.host} — short links live on ${origin.host}.`,
+    );
+  }
+  return { kind, shortUrl: `${SHORT_ORIGIN}${url.pathname}${url.search}` };
 }
 
 /**

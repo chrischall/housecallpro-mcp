@@ -32,6 +32,36 @@
       }
     }
   },
+  "tools": [
+    {
+      "name": "housecallpro_get_estimate",
+      "description": "Read an estimate your contractor sent you: line items, totals, tax, the company, and whether it still awaits your approval."
+    },
+    {
+      "name": "housecallpro_get_invoice",
+      "description": "Read an invoice your contractor sent you: amount, subtotal, tax, what is still owed, and whether it can be paid online."
+    },
+    {
+      "name": "housecallpro_get_company",
+      "description": "Look up the contractor behind an estimate: phone, email, website, address and default arrival window."
+    },
+    {
+      "name": "housecallpro_list_links",
+      "description": "List the customer links this server is configured with (labels and document kinds only; never the tokens)."
+    },
+    {
+      "name": "housecallpro_decline_estimate",
+      "description": "Decline one or more options on an estimate. Destructive: asks you to confirm first, and cannot be undone from here."
+    },
+    {
+      "name": "housecallpro_approve_estimate",
+      "description": "Always refuses: approval is gated behind a reCAPTCHA only the real page can produce. Explains how to approve in a browser."
+    },
+    {
+      "name": "housecallpro_healthcheck",
+      "description": "Check that the server can reach Housecall Pro and that a configured link still resolves."
+    }
+  ],
   "user_config": {
     "link": {
       "type": "string",

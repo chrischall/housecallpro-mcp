@@ -39,6 +39,25 @@ describe('parseLink', () => {
     });
   });
 
+  // The short code alone resolves to the bearer token, so it must never be
+  // fetched over cleartext: an http:// short link is upgraded before storing.
+  it('upgrades an http:// short link to https before it is ever fetched', () => {
+    expect(parseLink('http://pro.housecallpro.com/mobile_invoice/Ex4mpl3Cod')).toEqual({
+      kind: 'invoice',
+      shortUrl: 'https://pro.housecallpro.com/mobile_invoice/Ex4mpl3Cod',
+    });
+  });
+
+  // Short links are only issued on pro.housecallpro.com (and mint.yaml only
+  // allows egress there and to app.); any other subdomain is refused.
+  it.each([
+    'https://evil.housecallpro.com/mobile_estimate/Ex4mpl3Cod',
+    'https://client.housecallpro.com/mobile_estimate/Ex4mpl3Cod',
+    'https://pro.housecallpro.com:8443/mobile_estimate/Ex4mpl3Cod',
+  ])('refuses a short link that is not on pro.housecallpro.com: %s', (link) => {
+    expect(() => parseLink(link)).toThrow(/pro\.housecallpro\.com/);
+  });
+
   it('rejects a foreign host rather than trusting a pasted URL', () => {
     expect(() => parseLink(`https://evil.example.com/estimates/${TOKEN_A}`)).toThrow(
       /housecallpro\.com/,

@@ -51,6 +51,20 @@ describe('tool roster', () => {
   });
 });
 
+describe('tool annotations', () => {
+  // Every tool that reaches housecallpro.com says so (openWorldHint) and has a
+  // title — get_company fetches /alpha/organizations/{id} like the others.
+  it('marks get_company as a titled, open-world read', async () => {
+    const h = await harnessWith(json(ESTIMATE) as unknown as typeof fetch);
+    const tool = (await h.client.listTools()).tools.find((t) => t.name === 'housecallpro_get_company');
+    expect(tool?.annotations).toMatchObject({
+      title: 'Get company',
+      readOnlyHint: true,
+      openWorldHint: true,
+    });
+  });
+});
+
 describe('housecallpro_decline_estimate', () => {
   // A harness created without an elicitation handler is a client that cannot
   // be prompted, so the default MCP_CONFIRM_MODE (ask-user) takes the two-step
