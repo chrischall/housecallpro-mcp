@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.2.1](https://github.com/chrischall/housecallpro-mcp/compare/v1.2.0...v1.2.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* annotate tools truthfully and sync manifests with the served tools ([#93](https://github.com/chrischall/housecallpro-mcp/issues/93)) ([9f6a91d](https://github.com/chrischall/housecallpro-mcp/commit/9f6a91d4f054c6a096a7ee5b0e6c399926815ff2))
+* declare the plugin MCP config under the mcpServers key Claude Code reads ([#94](https://github.com/chrischall/housecallpro-mcp/issues/94)) ([349b9fd](https://github.com/chrischall/housecallpro-mcp/commit/349b9fdef570735b794a09e6ff5c1ba83345b2d5))
+* **deps:** Bump source-map-js from 1.2.1 to 1.2.2 in the security group across 1 directory ([#92](https://github.com/chrischall/housecallpro-mcp/issues/92)) ([c3e514e](https://github.com/chrischall/housecallpro-mcp/commit/c3e514e0826cdf4533d2be9c5dd2b20780fa068a))
+* **deps:** update @chrischall/mcp-utils to 3.0.0 ([#91](https://github.com/chrischall/housecallpro-mcp/issues/91)) ([0f0c93d](https://github.com/chrischall/housecallpro-mcp/commit/0f0c93d6fdd1e4094f9bad86c1db621a888fbf47))
+* resolve low-severity audit findings ([#88](https://github.com/chrischall/housecallpro-mcp/issues/88)) ([0a9e1f5](https://github.com/chrischall/housecallpro-mcp/commit/0a9e1f5924f6993da55db33fbaa59a8fe7f30848))
+
 ## [1.2.0](https://github.com/chrischall/housecallpro-mcp/compare/v1.1.2...v1.2.0) (2026-10-07)
 
 
