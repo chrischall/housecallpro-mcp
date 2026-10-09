@@ -21,6 +21,18 @@
           "description": "Estimate or invoice link your contractor sent you.",
           "isRequired": false,
           "isSecret": true
+        },
+        {
+          "name": "HOUSECALLPRO_LINKS",
+          "description": "A JSON array of customer links for several documents at once. Use HOUSECALLPRO_LINK instead for a single estimate/invoice link.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "HOUSECALLPRO_LINK_LABEL",
+          "description": "Label for the single link given by HOUSECALLPRO_LINK (defaults to \"default\").",
+          "isRequired": false,
+          "isSecret": false
         }
       ]
     }

@@ -142,7 +142,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
       description:
         'List the Housecall Pro customer links this server is configured with. Labels and ' +
         'document kinds only — retrieval tokens are credentials and are never returned.',
-      annotations: toolAnnotations({ readOnly: true }),
+      annotations: toolAnnotations({ title: 'List links', readOnly: true, openWorld: false }),
       inputSchema: z.object({}),
     },
     async () => minifiedResult({ links: client.links.list() }),
@@ -304,7 +304,8 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
         'Approving an estimate is NOT automatable and this tool always refuses. Housecall ' +
         'Pro gates approval behind a reCAPTCHA token only the real page can mint. Use this ' +
         'to get the explanation and the link to approve in a browser.',
-      annotations: toolAnnotations({ readOnly: true }),
+      // Closed-world: it refuses before making any request.
+      annotations: toolAnnotations({ title: 'Approve estimate', readOnly: true, openWorld: false }),
       inputSchema: z.object({
         link: linkArg,
         option_ids: z.array(z.string()).default([]),
