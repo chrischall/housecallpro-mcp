@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
+import { createTestHarness } from '@chrischall/mcp-utils/test';
+import { HousecallProClient } from '../src/client.js';
+import { LinkRegistry } from '../src/links.js';
+import { registerEstimateTools } from '../src/tools/estimates.js';
+import { registerHealthcheckTools } from '../src/tools/healthcheck.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -37,5 +42,26 @@ describe('mint.yaml', () => {
     const src = readFileSync(join(root, 'src/links.ts'), 'utf8');
     const read = [...new Set(src.match(/HOUSECALLPRO_[A-Z_]+/g) ?? [])].sort();
     expect(mintEnv().map((e) => e.name).sort()).toEqual(read);
+  });
+});
+
+describe('manifest.json', () => {
+  // The .mcpb manifest is the one place a host or reviewer sees the tool
+  // surface — including the destructive decline — without running the server,
+  // so it must list exactly what the server registers.
+  it('lists exactly the tools the server registers', async () => {
+    const client = new HousecallProClient(new LinkRegistry({}));
+    const h = await createTestHarness((server) => {
+      registerEstimateTools(server, client);
+      registerHealthcheckTools(server, client);
+    });
+    const registered = (await h.listTools()).map((t) => t.name).sort();
+
+    const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8')) as {
+      tools?: Array<{ name: string; description: string }>;
+    };
+    expect(manifest.tools, 'manifest.json declares a tools array').toBeDefined();
+    expect(manifest.tools!.map((t) => t.name).sort()).toEqual(registered);
+    for (const t of manifest.tools!) expect(t.description.trim(), t.name).not.toBe('');
   });
 });
