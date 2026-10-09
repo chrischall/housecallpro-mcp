@@ -132,7 +132,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
       description:
         'Look up the contractor behind an estimate: phone, email, website, address and ' +
         'default arrival window. Takes the `organization_id` from an estimate.',
-      annotations: toolAnnotations({ readOnly: true }),
+      annotations: toolAnnotations({ title: 'Get company', openWorld: true }),
       inputSchema: z.object({
         organization_id: z
           .string()
