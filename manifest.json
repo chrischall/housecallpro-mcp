@@ -28,7 +28,9 @@
         "${__dirname}/dist/bundle.js"
       ],
       "env": {
-        "HOUSECALLPRO_LINK": "${user_config.link}"
+        "HOUSECALLPRO_LINK": "${user_config.link}",
+        "HOUSECALLPRO_LINKS": "${user_config.links}",
+        "HOUSECALLPRO_LINK_LABEL": "${user_config.link_label}"
       }
     }
   },
@@ -68,6 +70,19 @@
       "title": "Customer link",
       "description": "The estimate or invoice link your contractor sent you (pro.housecallpro.com/mobile_estimate/… or client.housecallpro.com/estimates/…).",
       "sensitive": true,
+      "required": false
+    },
+    "links": {
+      "type": "string",
+      "title": "Customer links",
+      "description": "A JSON array of customer links for several documents at once. Use HOUSECALLPRO_LINK instead for a single estimate/invoice link.",
+      "sensitive": true,
+      "required": false
+    },
+    "link_label": {
+      "type": "string",
+      "title": "Link label",
+      "description": "Label for the single link given by HOUSECALLPRO_LINK (defaults to \"default\").",
       "required": false
     }
   },
