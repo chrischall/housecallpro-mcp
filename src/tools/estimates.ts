@@ -235,6 +235,12 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
           message: 'Review and confirm declining these estimate options:',
           details: { estimate_number: before.estimate_number, options },
           tool: 'housecallpro_decline_estimate',
+          // No signed-in principal: access is by the estimate link alone.
+          account: undefined,
+          // Bound by hash only (never readable in the token's claims), so the
+          // link is safe here; a token minted for one link or option set is
+          // refused for any other.
+          args: { link, option_ids },
           confirmToken,
           subject: () => ({
             // Never the link: the retrieval token is a bearer credential, and a
