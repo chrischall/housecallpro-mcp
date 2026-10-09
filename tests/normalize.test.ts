@@ -17,7 +17,7 @@ function fixture(): EstimateResponse {
         id: 'csr_1',
         estimate_uuid: 'csr_1',
         estimate_number: '900000001',
-        organization_id: '6e14b390-4b34-4338-a7c2-89d248ca25c8',
+        organization_id: '00000000-0000-4000-8000-000000000001',
         customer_uuid: 'cus_1',
         customer_approval_mode: 'single_option',
         expiration_date: null,
@@ -26,10 +26,10 @@ function fixture(): EstimateResponse {
           data: {
             street: '1 Example St',
             street_line_2: null,
-            city: 'Charlotte',
-            state: 'NC',
-            zip: '28209',
-            printable_address: '1 Example St, Charlotte, NC 28209',
+            city: 'Anytown',
+            state: 'ST',
+            zip: '00000',
+            printable_address: '1 Example St, Anytown, ST 00000',
             country: 'US',
           },
         },
@@ -84,10 +84,10 @@ function fixture(): EstimateResponse {
     signatures_enabled: false,
     payment_options: { can_pay_online: true },
     company_name: 'Example Plumbing',
-    company_phone_number: '7045551234',
+    company_phone_number: '5555550100',
     company_email: 'info@example.com',
     company_website: 'https://example.com',
-    company_printable_address: '1 Trade St, Charlotte, NC 28273',
+    company_printable_address: '1 Trade St, Anytown, ST 00001',
     company_logo_url: 'https://example.com/logo.png',
     company_country: 'US',
   } as unknown as EstimateResponse;
@@ -98,23 +98,23 @@ describe('summarizeEstimate', () => {
     const s = summarizeEstimate(fixture());
 
     expect(s.estimate_number).toBe('900000001');
-    expect(s.organization_id).toBe('6e14b390-4b34-4338-a7c2-89d248ca25c8');
+    expect(s.organization_id).toBe('00000000-0000-4000-8000-000000000001');
     expect(s.customer_approval_mode).toBe('single_option');
     expect(s.customer_name).toBe('Example Customer');
     expect(s.message_from_pro).toBe('Thanks for your business.');
   });
 
   it('lifts the address out of its {object,data} wrapper', () => {
-    expect(summarizeEstimate(fixture()).service_address).toBe('1 Example St, Charlotte, NC 28209');
+    expect(summarizeEstimate(fixture()).service_address).toBe('1 Example St, Anytown, ST 00000');
   });
 
   it('collects the company block', () => {
     expect(summarizeEstimate(fixture()).company).toEqual({
       name: 'Example Plumbing',
-      phone: '7045551234',
+      phone: '5555550100',
       email: 'info@example.com',
       website: 'https://example.com',
-      address: '1 Trade St, Charlotte, NC 28273',
+      address: '1 Trade St, Anytown, ST 00001',
     });
   });
 

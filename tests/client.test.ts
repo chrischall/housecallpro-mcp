@@ -4,7 +4,7 @@ import { LinkRegistry } from '../src/links.js';
 
 const TOKEN = `${'a'.repeat(64)}_${'b'.repeat(64)}`;
 const SHORT = 'https://pro.housecallpro.com/mobile_estimate/Ex4mpl3Cod';
-const ORG = '6e14b390-4b34-4338-a7c2-89d248ca25c8';
+const ORG = '00000000-0000-4000-8000-000000000001';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -113,12 +113,12 @@ describe('HousecallProClient.getEstimate', () => {
 
 describe('HousecallProClient.getOrganization', () => {
   it('reads an organization by uuid', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ company_name: 'Queen City' }));
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ company_name: 'Example Plumbing' }));
     const client = clientFor({ HOUSECALLPRO_LINK: TOKEN }, fetchImpl as unknown as typeof fetch);
 
     const out = await client.getOrganization(ORG);
 
-    expect(out['company_name']).toBe('Queen City');
+    expect(out['company_name']).toBe('Example Plumbing');
     expect(fetchImpl.mock.calls[0]?.[0]).toBe(`https://app.housecallpro.com/alpha/organizations/${ORG}`);
   });
 
