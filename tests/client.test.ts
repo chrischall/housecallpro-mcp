@@ -71,6 +71,17 @@ describe('HousecallProClient.getEstimate', () => {
     await expect(client.getEstimate()).rejects.toThrow(/expired|revoked|new link/i);
   });
 
+  // Most callers paste a link per call and configure nothing, so the hint must
+  // not send them to edit an environment variable that is not involved.
+  it.each([401, 403])('words the HTTP %i hint without naming an env var', async (status) => {
+    fetchImpl.mockResolvedValue(jsonResponse({ error: 'nope' }, status));
+    const client = clientFor({}, fetchImpl as unknown as typeof fetch);
+    const err = await client.getEstimate(TOKEN).catch((e: unknown) => e as Error);
+    expect(err.message).toMatch(/resend it/i);
+    expect(err.message).toMatch(/new link/i);
+    expect(err.message).not.toMatch(/HOUSECALLPRO_LINK/);
+  });
+
   it('reports a 404 as a stale link rather than a bug', async () => {
     fetchImpl.mockResolvedValue(new Response('<html>404</html>', { status: 404 }));
     const client = clientFor({ HOUSECALLPRO_LINK: TOKEN }, fetchImpl as unknown as typeof fetch);

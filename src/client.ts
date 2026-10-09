@@ -281,7 +281,7 @@ export class HousecallProClient {
     if (res.status === 401 || res.status === 403) {
       throw new McpToolError(
         `Housecall Pro rejected the customer link (HTTP ${res.status}). The link has expired ` +
-          'or been revoked — ask your pro to resend it, then update HOUSECALLPRO_LINK.',
+          'or been revoked — ask your pro to resend it, then use the new link.',
       );
     }
 
