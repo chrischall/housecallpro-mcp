@@ -27,15 +27,15 @@ function fixture(): InvoiceResponse {
     company_info: {
       name: 'Example Plumbing',
       logo_url: 'https://example.com/logo.png',
-      organization_uuid: '6e14b390-4b34-4338-a7c2-89d248ca25c8',
+      organization_uuid: '00000000-0000-4000-8000-000000000001',
       can_accept_gratuity: true,
       country: 'US',
       analytics_uuid: 'anl_1',
-      phone_number: '(704) 555-1234',
+      phone_number: '(555) 555-0100',
       email: 'info@example.com',
       website: 'https://example.com',
     },
-    customer: { email: null, card_on_file: null, uuid: 'cus_1', mobile_number: '7045550000' },
+    customer: { email: null, card_on_file: null, uuid: 'cus_1', mobile_number: '5555550101' },
     financing_options: [],
     videos: [],
     payment_options: {
@@ -121,10 +121,10 @@ describe('summarizeInvoice', () => {
   it('lifts the company block', () => {
     expect(summarizeInvoice(fixture()).company).toEqual({
       name: 'Example Plumbing',
-      phone: '(704) 555-1234',
+      phone: '(555) 555-0100',
       email: 'info@example.com',
       website: 'https://example.com',
-      organization_id: '6e14b390-4b34-4338-a7c2-89d248ca25c8',
+      organization_id: '00000000-0000-4000-8000-000000000001',
     });
   });
 

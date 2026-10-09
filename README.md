@@ -30,7 +30,7 @@ server is for being someone's customer.
 
 ## What you can do
 
-- *"What did Queen City quote me for the tankless flush?"*
+- *"What did my plumber quote me for the tankless flush?"*
 - *"What's on that estimate, line by line?"*
 - *"How much of that $346 is tax?"*
 - *"Am I still on the hook to respond to this?"*
