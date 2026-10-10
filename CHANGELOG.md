@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/chrischall/housecallpro-mcp/compare/v1.2.1...v1.2.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* **deps:** Bump @modelcontextprotocol/server from 2.3.0 to 2.3.1 in the production-dependencies group ([#97](https://github.com/chrischall/housecallpro-mcp/issues/97)) ([fb72d47](https://github.com/chrischall/housecallpro-mcp/commit/fb72d479dfcbe059066a155c5f8461a731170d2f))
+
 ## [1.2.1](https://github.com/chrischall/housecallpro-mcp/compare/v1.2.0...v1.2.1) (2026-10-09)
 
 
