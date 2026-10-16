@@ -50,13 +50,13 @@
     "build": "tsc && npm run bundle",
     "bundle": "esbuild src/index.ts --bundle --alias:zod/v4=./node_modules/zod/v4/index.cjs --platform=node --format=esm --banner:js='import { createRequire as __createRequire } from \"module\"; const require = __createRequire(import.meta.url);' --outfile=dist/bundle.js",
     "dev": "node dist/index.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
     "test": "npm run typecheck && vitest run",
     "test:coverage": "npm run typecheck && vitest run --coverage",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@chrischall/mcp-utils": "^3.0.0",
+    "@chrischall/mcp-utils": "^3.0.3",
     "@modelcontextprotocol/server": "^2.3.0",
     "zod": "^4.6.5"
   },

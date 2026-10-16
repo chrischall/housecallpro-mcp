@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HousecallProClient } from '../src/client.js';
+import { HousecallProClient, MAX_RESPONSE_BYTES } from '../src/client.js';
 import { LinkRegistry } from '../src/links.js';
 
 const TOKEN = `${'a'.repeat(64)}_${'b'.repeat(64)}`;
@@ -141,7 +141,8 @@ describe('HousecallProClient.declineOptions', () => {
     expect(url).toBe('https://app.housecallpro.com/api/estimates/estimate_options/customer_declines');
     expect(init.method).toBe('POST');
     expect(new Headers(init.headers).get('authorization')).toBe(`Token ${TOKEN}`);
-    const body = init.body as URLSearchParams;
+    expect(new Headers(init.headers).get('content-type')).toMatch(/^application\/x-www-form-urlencoded/);
+    const body = new URLSearchParams(String(init.body));
     expect(body.getAll('estimate_option_uuids[]')).toEqual(['est_1', 'est_2']);
   });
 
@@ -159,5 +160,74 @@ describe('HousecallProClient.approveOptions', () => {
     const client = clientFor({ HOUSECALLPRO_LINK: TOKEN }, fetchImpl as unknown as typeof fetch);
     await expect(client.approveOptions(['est_1'])).rejects.toThrow(/reCAPTCHA/i);
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+// fleet-audit#1265 / #1267: the client is built on mcp-utils createApiClient /
+// fetchBounded, so every call is bounded in time and size and honours
+// cancellation, and a decline whose outcome is unknown says so.
+describe('HousecallProClient transport bounds', () => {
+  /** A fetch that never answers, but gives up when its signal aborts. */
+  function hangingFetch(): ReturnType<typeof vi.fn> {
+    return vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+          );
+        }),
+    );
+  }
+
+  it('times out a stalled read instead of hanging', async () => {
+    const fetchImpl = hangingFetch();
+    const client = new HousecallProClient(new LinkRegistry({ HOUSECALLPRO_LINK: TOKEN }), {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      timeoutMs: 20,
+    });
+    await expect(client.getEstimate()).rejects.toThrow(/timed out|timeout/i);
+    expect((fetchImpl.mock.calls[0]?.[1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('times out a stalled short-link probe too', async () => {
+    const fetchImpl = hangingFetch();
+    const client = new HousecallProClient(new LinkRegistry({ HOUSECALLPRO_LINK: SHORT }), {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      timeoutMs: 20,
+    });
+    await expect(client.getEstimate()).rejects.toThrow(/timed out|timeout/i);
+  });
+
+  it('refuses a response body over the cap', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response('{}', {
+        status: 200,
+        headers: { 'content-type': 'application/json', 'content-length': String(MAX_RESPONSE_BYTES + 1) },
+      }),
+    );
+    const client = clientFor({ HOUSECALLPRO_LINK: TOKEN }, fetchImpl as unknown as typeof fetch);
+    await expect(client.getEstimate()).rejects.toMatchObject({ name: 'ResponseTooLargeError' });
+  });
+
+  it('reports a decline whose connection drops after sending as outcome-unknown, not "could not reach"', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
+    const client = clientFor({ HOUSECALLPRO_LINK: TOKEN }, fetchImpl as unknown as typeof fetch);
+    const err = await client.declineOptions(['est_1']).catch((e: unknown) => e as Error);
+    expect(err.name).toBe('WriteOutcomeUnknownError');
+    expect(err.message).not.toContain(TOKEN);
+    expect(JSON.stringify(err)).toMatch(/housecallpro_get_estimate/);
+  });
+
+  it('reports a CDN challenge page as an edge block, not as a spent link', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response('<html><head><title>Just a moment...</title></head><body>cf-chl</body></html>', {
+        status: 403,
+        headers: { 'content-type': 'text/html', server: 'cloudflare', 'cf-mitigated': 'challenge' },
+      }),
+    );
+    const client = clientFor({ HOUSECALLPRO_LINK: TOKEN }, fetchImpl as unknown as typeof fetch);
+    const err = await client.getEstimate().catch((e: unknown) => e as Error);
+    expect(err.name).toBe('EdgeBlockedError');
+    expect(err.message).not.toMatch(/resend it/i);
   });
 });

@@ -10,7 +10,16 @@
  * all; writes send `Authorization: Token <token>` and name the subject in the
  * body. That asymmetry is the API's, not ours — see docs/HOUSECALLPRO-API.md.
  */
-import { McpToolError, messageOf } from '@chrischall/mcp-utils';
+import {
+  ApiError,
+  EdgeBlockedError,
+  McpToolError,
+  UpstreamFormatError,
+  createApiClient,
+  fetchBounded,
+  messageOf,
+  type ApiClient,
+} from '@chrischall/mcp-utils';
 import {
   API_ORIGIN,
   RETRIEVAL_TOKEN_RE,
@@ -46,8 +55,23 @@ function looksLikeLinkAttempt(value: string): boolean {
   );
 }
 
+/** Per-attempt budget for any call, covering the body as well as the headers. */
+export const REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * Largest response body read. A real estimate or invoice document is tens of
+ * kB; this only stops a runaway body from being held in memory.
+ */
+export const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
+
+/** Told to the model when a decline was sent but its outcome is unknown. */
+const DECLINE_OUTCOME_HINT =
+  'Re-read the estimate with housecallpro_get_estimate to see whether the decline landed before trying again.';
+
 export interface HousecallProClientOptions {
   fetchImpl?: typeof fetch;
+  /** Per-call timeout in ms (tests). Defaults to {@link REQUEST_TIMEOUT_MS}. */
+  timeoutMs?: number;
 }
 
 /** Loose: only the fields we read are named, so an upstream addition can't break us. */
@@ -64,6 +88,15 @@ export interface InvoiceResponse {
 
 export class HousecallProClient {
   private readonly fetchImpl: typeof fetch;
+  private readonly timeoutMs: number;
+  /**
+   * The shared fleet client (mcp-utils): per-attempt timeout covering the
+   * body, the caller's cancellation, a body cap, same-origin redirects, edge-
+   * block detection, and WriteOutcomeUnknownError for a sent-but-unanswered
+   * decline. No `getToken`: reads carry the token in the path and the decline
+   * sends its own `Authorization: Token …` header.
+   */
+  private readonly api: ApiClient;
   /** link URL -> resolved long token, so a short link costs one redirect per client. */
   private readonly resolved = new Map<string, string>();
 
@@ -72,6 +105,18 @@ export class HousecallProClient {
     opts: HousecallProClientOptions = {},
   ) {
     this.fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+    this.timeoutMs = opts.timeoutMs ?? REQUEST_TIMEOUT_MS;
+    this.api = createApiClient({
+      baseUrl: API_ORIGIN,
+      baseHeaders: this.baseHeaders(),
+      serviceName: 'Housecall Pro',
+      timeout: this.timeoutMs,
+      maxResponseBytes: MAX_RESPONSE_BYTES,
+      redirect: 'same-origin',
+      fetchImpl: (input, init) => this.fetchImpl(input, init),
+      onUnauthorized: () => linkRejected(401),
+      writeOutcomeHint: DECLINE_OUTCOME_HINT,
+    });
   }
 
   /**
@@ -192,16 +237,12 @@ export class HousecallProClient {
     // sending the user after the wrong problem.
     this.assertShape(token, 'estimate', selector);
 
-    const body = new URLSearchParams();
-    for (const uuid of optionUuids) body.append('estimate_option_uuids[]', uuid);
+    const form = new URLSearchParams();
+    for (const uuid of optionUuids) form.append('estimate_option_uuids[]', uuid);
 
-    return this.request('/api/estimates/estimate_options/customer_declines', {
-      method: 'POST',
-      headers: {
-        authorization: `Token ${token}`,
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      body,
+    return this.request('POST', '/api/estimates/estimate_options/customer_declines', {
+      headers: { authorization: `Token ${token}` },
+      form,
     });
   }
 
@@ -231,11 +272,22 @@ export class HousecallProClient {
       throw new McpToolError(`Link "${link.label}" has neither a token nor a short URL.`);
     }
 
+    // A different origin from the API (the short-link host), and the 301 is
+    // the answer, so this one call is a bounded fetch rather than the client.
     let res: Response;
     try {
-      res = await this.fetchImpl(shortUrl, { redirect: 'manual', headers: this.baseHeaders() });
+      ({ res } = await fetchBounded(
+        shortUrl,
+        { redirect: 'manual', headers: this.baseHeaders() },
+        {
+          read: 'none',
+          timeoutMs: this.timeoutMs,
+          service: 'Housecall Pro',
+          fetchImpl: (input, init) => this.fetchImpl(input, init),
+        },
+      ));
     } catch (err) {
-      throw new McpToolError(`Could not reach housecallpro.com: ${messageOf(err)}`);
+      throw unreachable(err);
     }
 
     const location = res.headers.get('location') ?? '';
@@ -260,50 +312,67 @@ export class HousecallProClient {
   }
 
   private async getJson(path: string): Promise<Record<string, unknown>> {
-    return this.request(path, { method: 'GET' });
+    return this.request('GET', path, {});
   }
 
-  private async request(path: string, init: RequestInit): Promise<Record<string, unknown>> {
-    const url = `${API_ORIGIN}${path}`;
-
-    let res: Response;
+  /**
+   * One API call through the shared client, with this repo's wording for the
+   * statuses a customer link produces. Errors the shared client already words
+   * well — a timeout, an outcome-unknown write, an edge block, an oversized
+   * body, a cancellation — pass through unchanged.
+   */
+  private async request(
+    method: 'GET' | 'POST',
+    path: string,
+    opts: { headers?: Record<string, string>; form?: URLSearchParams },
+  ): Promise<Record<string, unknown>> {
     try {
-      res = await this.fetchImpl(url, {
-        ...init,
-        headers: { ...this.baseHeaders(), ...(init.headers as Record<string, string> | undefined) },
-      });
+      return await this.api.fetchJson<Record<string, unknown>>(method, path, opts);
     } catch (err) {
-      throw new McpToolError(`Could not reach housecallpro.com: ${messageOf(err)}`);
-    }
-
-    // Deliberately not SessionNotAuthenticatedError: there is no session and
-    // nothing to sign in to. A 401 here means the link itself is spent.
-    if (res.status === 401 || res.status === 403) {
-      throw new McpToolError(
-        `Housecall Pro rejected the customer link (HTTP ${res.status}). The link has expired ` +
-          'or been revoked — ask your pro to resend it, then use the new link.',
-      );
-    }
-
-    if (res.status === 404) {
-      throw new McpToolError(
-        'Housecall Pro says this document no longer exists (HTTP 404). A pro can delete ' +
-          'or re-issue a document, which invalidates the old link.',
-      );
-    }
-
-    if (!res.ok) {
-      throw new McpToolError(`Housecall Pro returned HTTP ${res.status}.`);
-    }
-
-    const text = await res.text();
-    try {
-      return JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      throw new McpToolError(
-        `Housecall Pro returned an unexpected non-JSON response (HTTP ${res.status}, ` +
-          `${text.length} bytes). This usually means the link is no longer valid.`,
-      );
+      throw this.mapError(err);
     }
   }
+
+  private mapError(err: unknown): Error {
+    if (err instanceof EdgeBlockedError) return err;
+    if (err instanceof UpstreamFormatError) {
+      return new McpToolError(
+        'Housecall Pro returned an unexpected non-JSON response. ' +
+          'This usually means the link is no longer valid.',
+      );
+    }
+    if (err instanceof ApiError) {
+      // Deliberately not SessionNotAuthenticatedError: there is no session and
+      // nothing to sign in to. A 401/403 here means the link itself is spent.
+      if (err.status === 403) return linkRejected(403);
+      if (err.status === 404) {
+        return new McpToolError(
+          'Housecall Pro says this document no longer exists (HTTP 404). A pro can delete ' +
+            'or re-issue a document, which invalidates the old link.',
+        );
+      }
+      return new McpToolError(`Housecall Pro returned HTTP ${err.status}.`);
+    }
+    return unreachable(err);
+  }
+}
+
+/** A 401/403 on a customer link: it has expired or been revoked. */
+function linkRejected(status: number): McpToolError {
+  return new McpToolError(
+    `Housecall Pro rejected the customer link (HTTP ${status}). The link has expired ` +
+      'or been revoked — ask your pro to resend it, then use the new link.',
+  );
+}
+
+/**
+ * A failure before any answer. Typed errors from the shared kit (timeout,
+ * outcome-unknown, cancellation, too-large) keep their own message and kind;
+ * only a raw transport throw becomes "could not reach".
+ */
+function unreachable(err: unknown): Error {
+  if (err instanceof McpToolError || (err instanceof Error && err.name !== 'Error' && err.name !== 'TypeError')) {
+    return err;
+  }
+  return new McpToolError(`Could not reach housecallpro.com: ${messageOf(err)}`);
 }
