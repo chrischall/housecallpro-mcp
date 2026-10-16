@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/chrischall/housecallpro-mcp/compare/v1.2.2...v1.2.3) (2026-10-16)
+
+
+### Bug Fixes
+
+* **client:** bound every Housecall Pro call with a timeout, cancellation and a body cap ([#99](https://github.com/chrischall/housecallpro-mcp/issues/99)) ([a4152ea](https://github.com/chrischall/housecallpro-mcp/commit/a4152ea2e1c4b8fbaaf3974a63793b92a597da06))
+
 ## [1.2.2](https://github.com/chrischall/housecallpro-mcp/compare/v1.2.1...v1.2.2) (2026-10-10)
 
 
