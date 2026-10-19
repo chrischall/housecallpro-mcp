@@ -33,3 +33,9 @@ egress:
     # `origin:`/`referer:` request HEADER on calls to app.housecallpro.com.
     - app.housecallpro.com
     - pro.housecallpro.com
+examples:
+  - prompt: What did my plumber quote me on that estimate, line by line?
+    note: Reads the estimate link your contractor sent you.
+  - prompt: How much of my contractor's invoice is tax, and how much do I still owe?
+  - prompt: Who is the company behind this estimate, and what's their phone number?
+    note: Looks up the contractor's contact details from the estimate.
