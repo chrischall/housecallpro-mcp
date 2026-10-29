@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.4](https://github.com/chrischall/housecallpro-mcp/compare/v1.2.3...v1.2.4) (2026-10-29)
+
+
+### Bug Fixes
+
+* **deps:** Bump @chrischall/mcp-utils from 3.0.3 to 3.3.0 in the production-dependencies group ([#107](https://github.com/chrischall/housecallpro-mcp/issues/107)) ([ea28e60](https://github.com/chrischall/housecallpro-mcp/commit/ea28e60b894d2b1bd7dd846755ba61e41f8e22c4))
+* **deps:** require @chrischall/mcp-utils 3.4.0 ([#108](https://github.com/chrischall/housecallpro-mcp/issues/108)) ([8f1d215](https://github.com/chrischall/housecallpro-mcp/commit/8f1d215f0dfebe8fd745b0e9280fc3efa0cfb9e5))
+* **deps:** require the MCP SDK ^2.4.0 that mcp-utils 3.4.0 peer-requires ([#109](https://github.com/chrischall/housecallpro-mcp/issues/109)) ([6931c81](https://github.com/chrischall/housecallpro-mcp/commit/6931c818d7d86bef453ecab6aa1db090c4efa0af))
+
+
+### Documentation
+
+* **mint:** add sample prompts for the public catalog ([#104](https://github.com/chrischall/housecallpro-mcp/issues/104)) ([28a65ee](https://github.com/chrischall/housecallpro-mcp/commit/28a65eef3a58ff20cc831bf7c6f03cc0ec8c3adf))
+
 ## [1.2.3](https://github.com/chrischall/housecallpro-mcp/compare/v1.2.2...v1.2.3) (2026-10-16)
 
 
