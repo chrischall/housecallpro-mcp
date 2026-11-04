@@ -31,6 +31,7 @@ import {
   viewEstimate,
   viewInvoice,
 } from '../normalize.js';
+import { homeMeta } from './hints.js';
 
 /**
  * The fence on every read that returns contractor-authored text.
@@ -99,6 +100,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
         'upstream document, whose money is cents only. ' +
         UNTRUSTED_DESCRIPTION_SUFFIX,
       annotations: toolAnnotations({ title: 'Get estimate', openWorld: true }),
+      _meta: homeMeta('lookup', ['estimate', 'quote', 'bid', 'contractor', 'repair', 'home repair']),
       inputSchema: z.object({
         link: linkArg,
         view: estimateViewArg,
@@ -124,6 +126,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
         'document carries no line items — the portal shows a summary only. ' +
         UNTRUSTED_DESCRIPTION_SUFFIX,
       annotations: toolAnnotations({ title: 'Get invoice', openWorld: true }),
+      _meta: homeMeta('lookup', ['invoice', 'bill', 'what i owe', 'balance due', 'contractor']),
       inputSchema: z.object({
         link: linkArg,
         view: invoiceViewArg,
@@ -143,6 +146,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
         'List the Housecall Pro customer links this server is configured with. Labels and ' +
         'document kinds only — retrieval tokens are credentials and are never returned.',
       annotations: toolAnnotations({ title: 'List links', readOnly: true, openWorld: false }),
+      _meta: homeMeta('lookup', ['my links', 'saved links']),
       inputSchema: z.object({}),
     },
     async () => minifiedResult({ links: client.links.list() }),
@@ -156,6 +160,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
         'default arrival window. Takes the `organization_id` from an estimate. ' +
         UNTRUSTED_DESCRIPTION_SUFFIX,
       annotations: toolAnnotations({ title: 'Get company', openWorld: true }),
+      _meta: homeMeta('lookup', ['contractor', 'company', 'phone number', 'contact']),
       inputSchema: z.object({
         organization_id: z
           .string()
@@ -182,6 +187,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
         openWorld: true,
         destructive: true,
       }),
+      _meta: homeMeta('change', ['decline', 'turn down', 'reject quote']),
       inputSchema: z.object({
         link: linkArg,
         option_ids: z
@@ -306,6 +312,7 @@ export function registerEstimateTools(server: McpServer, client: HousecallProCli
         'to get the explanation and the link to approve in a browser.',
       // Closed-world: it refuses before making any request.
       annotations: toolAnnotations({ title: 'Approve estimate', readOnly: true, openWorld: false }),
+      _meta: homeMeta('other', ['approve', 'accept quote']),
       inputSchema: z.object({
         link: linkArg,
         option_ids: z.array(z.string()).default([]),

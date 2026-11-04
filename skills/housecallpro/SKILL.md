@@ -150,3 +150,15 @@ Two things to know: the invoice document has **no line items** (a paid invoice
 renders as a summary in the portal, and the API returns exactly that), and **no
 tax field** — the tax figure is `total - subtotal`. Money is integer cents here
 too. Use `due_amount` rather than `status` to decide whether it is settled.
+
+## In context groups
+
+On mcp-host, housecallpro-mcp joins the **home** group. It ships no canonical
+read and no subject: there is no customer account to list from, so nothing
+here can answer "what's new / due / on at home" across your documents — every
+estimate or invoice is reached only through the link the contractor sent. Its
+tools carry `lookup` hints (estimate, invoice, the contractor's details, the
+saved links), `change` on declining an option, and `other` on approve (which
+always refuses). A compound ask such as "is the pool on, and what does the
+plumber's quote say?" reaches it only with a link in hand — the group's
+round-up skips it. It needs no browser: reads are plain HTTPS.
