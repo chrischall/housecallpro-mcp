@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/chrischall/housecallpro-mcp/compare/v1.2.4...v1.3.0) (2026-11-04)
+
+
+### Features
+
+* context-group hints, lookup and write hints only (no canonical read) ([#110](https://github.com/chrischall/housecallpro-mcp/issues/110)) ([b297fdc](https://github.com/chrischall/housecallpro-mcp/commit/b297fdc9266d6fea53b5f58d2905855026a9da04))
+
 ## [1.2.4](https://github.com/chrischall/housecallpro-mcp/compare/v1.2.3...v1.2.4) (2026-10-29)
 
 
