@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/chrischall/housecallpro-mcp/compare/v1.3.0...v1.3.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **deps:** Bump @chrischall/mcp-utils from 3.4.0 to 3.7.2 in the production-dependencies group ([#114](https://github.com/chrischall/housecallpro-mcp/issues/114)) ([3a98910](https://github.com/chrischall/housecallpro-mcp/commit/3a989108c897721065dde4b6b7d094ddd990a05e))
+* **deps:** Bump @chrischall/mcp-utils from 3.7.2 to 3.9.0 in the production-dependencies group ([#116](https://github.com/chrischall/housecallpro-mcp/issues/116)) ([6d450b1](https://github.com/chrischall/housecallpro-mcp/commit/6d450b1440dccc364016870faf2c40e5a64d86cc))
+
 ## [1.3.0](https://github.com/chrischall/housecallpro-mcp/compare/v1.2.4...v1.3.0) (2026-11-04)
 
 
